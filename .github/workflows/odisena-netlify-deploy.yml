@@ -1,0 +1,151 @@
+name: Odisena Netlify Deploy
+
+# =============================================================================
+# Odisena — Netlify deploy workflow
+# =============================================================================
+# - Pushes to `main` deploy to production via `netlify deploy --prod`.
+# - Pushes to any other branch, and pull requests, create a Netlify preview
+#   (alias) deploy and post the preview URL to the GitHub step summary and
+#   (optionally) the PR.
+# - After a production deploy, if a custom domain is configured in
+#   odisena-deploy.yml, the workflow polls it over HTTPS to confirm DNS/SSL
+#   are ready. It never modifies DNS and never claims to force Let's Encrypt
+#   issuance — Netlify handles certificate issuance automatically once DNS
+#   correctly points at Netlify.
+# - Sends a Slack notification to the Odisena deployments channel once a
+#   deploy (production or preview) completes.
+#
+# Required repo secrets:
+#   NETLIFY_AUTH_TOKEN   Netlify personal/team access token
+#   NETLIFY_SITE_ID      Netlify Site ID (API ID) for this repo's site
+#   SLACK_WEBHOOK_URL    Slack Incoming Webhook URL for #odisena-deployments
+#
+# Optional repo/organization secrets or variables:
+#   NETLIFY_TEAM_SLUG          Netlify team slug (for links only)
+#   NETLIFY_CUSTOM_DOMAIN      Overrides custom_domain from odisena-deploy.yml
+#   ODISENA_DEPLOY_CONFIG_PATH Path to odisena-deploy.yml if not at repo root
+#   SLACK_BOT_TOKEN            Alternative to SLACK_WEBHOOK_URL (bot token)
+#   SLACK_CHANNEL_ID           Required if using SLACK_BOT_TOKEN
+#
+# See README.md in this template for full setup instructions.
+# =============================================================================
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Avoid overlapping deploys for the same ref.
+concurrency:
+  group: odisena-netlify-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy:
+    name: Build & deploy to Netlify
+    runs-on: ubuntu-latest
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      NETLIFY_TEAM_SLUG: ${{ secrets.NETLIFY_TEAM_SLUG }}
+      NETLIFY_CUSTOM_DOMAIN: ${{ secrets.NETLIFY_CUSTOM_DOMAIN }}
+      ODISENA_DEPLOY_CONFIG_PATH: ${{ secrets.ODISENA_DEPLOY_CONFIG_PATH }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate required secrets
+        run: |
+          missing=0
+          for name in NETLIFY_AUTH_TOKEN NETLIFY_SITE_ID; do
+            value="${!name}"
+            if [ -z "$value" ]; then
+              echo "::error::Missing required secret: $name"
+              missing=1
+            fi
+          done
+          if [ -z "$SLACK_WEBHOOK_URL" ] && [ -z "$SLACK_BOT_TOKEN" ]; then
+            echo "::warning::No SLACK_WEBHOOK_URL or SLACK_BOT_TOKEN set — Slack notifications will be skipped."
+          fi
+          if [ "$missing" = "1" ]; then
+            echo "::error::Add the missing secrets under Settings > Secrets and variables > Actions, then re-run."
+            exit 1
+          fi
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Determine deploy mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "mode=preview" >> "$GITHUB_OUTPUT"
+            echo "alias=pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "mode=production" >> "$GITHUB_OUTPUT"
+            echo "alias=" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=preview" >> "$GITHUB_OUTPUT"
+            echo "alias=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build & deploy via Netlify CLI
+        id: deploy
+        run: |
+          node scripts/odisena-netlify-deploy.mjs \
+            --mode=${{ steps.mode.outputs.mode }} \
+            ${{ steps.mode.outputs.alias != '' && format('--alias={0}', steps.mode.outputs.alias) || '' }}
+
+      - name: Comment preview URL on pull request
+        if: github.event_name == 'pull_request' && steps.deploy.outputs.deploy_url != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployUrl = `${{ steps.deploy.outputs.deploy_url }}`;
+            const body = `**Odisena Netlify preview deploy is ready:** ${deployUrl}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Notify Slack (success)
+        if: success()
+        run: |
+          node scripts/odisena-slack-notify.mjs \
+            --status=success \
+            --mode=${{ steps.mode.outputs.mode }} \
+            --site-name="${{ steps.deploy.outputs.site_name }}" \
+            --deploy-url="${{ steps.deploy.outputs.deploy_url }}" \
+            --domain-message="${{ steps.deploy.outputs.domain_message }}" \
+            --repo="${{ github.repository }}" \
+            --branch="${{ steps.deploy.outputs.branch }}" \
+            --commit="${{ steps.deploy.outputs.commit_sha }}"
+
+      - name: Notify Slack (failure)
+        if: failure()
+        run: |
+          node scripts/odisena-slack-notify.mjs \
+            --status=failure \
+            --mode=${{ steps.mode.outputs.mode }} \
+            --site-name="Odisena site" \
+            --repo="${{ github.repository }}" \
+            --branch="${{ github.ref_name }}" \
+            --commit="${{ github.sha }}"

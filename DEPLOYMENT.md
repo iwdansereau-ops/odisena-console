@@ -78,6 +78,12 @@ netlify deploy --prod    # production
 
 Or drag-and-drop this folder into the Netlify UI ("Deploy manually").
 
+**Automated CI/CD:** a GitHub Actions pipeline deploys this repo to Netlify
+on every push (production on `main`, previews on branches/PRs), checks
+`console.odisena.com` readiness, and posts to Slack. See
+**[docs/netlify-cicd.md](./docs/netlify-cicd.md)** for the required GitHub
+secrets and one-time setup.
+
 ## Option C — Cloudflare Pages
 
 ```bash

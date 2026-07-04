@@ -1,0 +1,12 @@
+# Optional: keep GitHub Actions versions in this template current.
+# Safe to delete if the repo already has its own Dependabot configuration —
+# just merge the `github-actions` entry below into it instead of having two
+# dependabot.yml files (only one is allowed per repo).
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "ci"
