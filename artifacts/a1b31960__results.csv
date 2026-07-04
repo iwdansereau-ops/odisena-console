@@ -1,0 +1,9 @@
+workload,rw_median_ns,rw_stddev_ns,atomic_median_ns,atomic_stddev_ns,speedup_x,latency_reduction_pct
+Workers1,184.40,3.55,179.90,1.19,1.025,2.44
+Workers4,165.70,4.78,97.29,1.98,1.703,41.29
+Workers8,161.00,1.98,94.28,1.42,1.708,41.44
+Workers16,154.20,3.64,92.14,1.65,1.674,40.25
+Workers32,147.60,3.52,88.98,1.40,1.659,39.72
+Workers64,153.00,4.92,89.50,0.75,1.709,41.50
+Workers128,154.30,8.18,88.82,1.63,1.737,42.44
+Workers64_WithWriter,151.60,3.83,91.69,0.98,1.653,39.52

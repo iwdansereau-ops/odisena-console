@@ -1,0 +1,187 @@
+name: Weekly benchmark
+
+# Fires every Monday at 13:00 UTC = 9:00 AM ET during EDT.
+# (During EST — Nov to early Mar — this shifts to 8:00 AM ET. Acceptable
+# tradeoff for "Monday morning"; if strict 9:00 ET is needed year-round, use
+# two schedules with month gates or an external scheduler.)
+on:
+  schedule:
+    - cron: "0 13 * * 1"
+  workflow_dispatch:
+    inputs:
+      duration_sec:
+        description: "Load duration in seconds"
+        default: "300"
+      threshold_pct:
+        description: "Regression threshold (percent)"
+        default: "10"
+
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: false      # never abort a running benchmark
+
+permissions:
+  contents: write                # commit baseline + history back to repo
+
+env:
+  GO_VERSION: "1.23"
+  OCB_VERSION: "0.155.0"
+  EXPORTER_DIR: exporter/logexporter
+  BENCH_DURATION_SEC: ${{ github.event.inputs.duration_sec || '300' }}
+  THRESHOLD_PCT: ${{ github.event.inputs.threshold_pct || '10' }}
+  # Rolling baseline: mean of the last N historical runs.
+  BASELINE_WINDOW: "4"
+
+jobs:
+  benchmark:
+    name: run-weekly-benchmark
+    runs-on: ubuntu-latest
+    # 5-min load + build + margin.
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # Full history needed so we can commit the baseline update back.
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: ${{ env.EXPORTER_DIR }}/go.sum
+
+      - name: Install sysstat (pidstat) + jq
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends sysstat jq
+          pidstat -V
+          jq --version
+
+      # --------------------------------------------------------------
+      # Build the custom Collector with OCB.
+      # --------------------------------------------------------------
+      - name: Install OpenTelemetry Collector Builder
+        run: |
+          go install go.opentelemetry.io/collector/cmd/builder@v${OCB_VERSION}
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: go mod download
+        working-directory: ${{ env.EXPORTER_DIR }}
+        run: go mod download
+
+      - name: Build otelcol-custom
+        run: builder --config builder/manifest.yaml
+
+      - name: Install telemetrygen
+        run: |
+          go install github.com/open-telemetry/opentelemetry-collector-contrib/cmd/telemetrygen@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      # --------------------------------------------------------------
+      # Run the 5-minute load test. The harness produces
+      # benchmarks/reports/latest.json and benchmarks/history/<date>.json.
+      # --------------------------------------------------------------
+      - name: Run 5-minute trace load benchmark
+        env:
+          BENCH_DURATION_SEC: ${{ env.BENCH_DURATION_SEC }}
+          BENCH_RATE: "1000"
+          BENCH_WORKERS: "2"
+        run: bash benchmarks/scripts/run_benchmark.sh
+
+      - name: Show run summary
+        run: |
+          jq . benchmarks/reports/latest.json
+          {
+            echo "### Weekly benchmark result"
+            echo ""
+            jq -r '
+              "**SHA**: `\(.sha)`  ",
+              "**Duration**: `\(.duration_sec)s`  ",
+              "**Throughput**: `\(.throughput_sps)` spans/sec  ",
+              "**Latency p50/p95/p99 ms**: `\(.latency.p50_ms // "n/a") / \(.latency.p95_ms // "n/a") / \(.latency.p99_ms // "n/a")`  ",
+              "**CPU %** (mean/peak): `\(.process.cpu_pct.mean // "n/a") / \(.process.cpu_pct.peak // "n/a")`  ",
+              "**RSS bytes** (mean/peak): `\(.process.rss_bytes.mean // "n/a") / \(.process.rss_bytes.peak // "n/a")`"
+            ' benchmarks/reports/latest.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # --------------------------------------------------------------
+      # Compare vs. rolling baseline; update baseline for next week.
+      # --------------------------------------------------------------
+      - name: Compare against baseline + refresh baseline
+        run: |
+          python3 benchmarks/scripts/compare_and_update.py \
+            --threshold-pct "${THRESHOLD_PCT}" \
+            --window        "${BASELINE_WINDOW}"
+
+      - name: Append regressions to summary
+        run: |
+          REGRESSIONS=$(jq '.regressions | length' benchmarks/reports/regressions.json)
+          {
+            echo ""
+            if [ "$REGRESSIONS" -gt 0 ]; then
+              echo "### 🚨 Regressions vs. baseline (>${THRESHOLD_PCT}%)"
+              echo ""
+              echo '| Metric | Baseline | Current | Δ% |'
+              echo '|---|---|---|---|'
+              jq -r '.regressions[] | "| `\(.metric)` | \(.baseline) | \(.current) | \(.pct_change | . * 100 | round / 100)% |"' \
+                benchmarks/reports/regressions.json
+            else
+              echo "### ✅ No regressions vs. baseline"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # --------------------------------------------------------------
+      # Persist history + baseline back to main so next week's run
+      # compares against fresh data.
+      # --------------------------------------------------------------
+      - name: Commit benchmark artifacts back to main
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add benchmarks/history/ benchmarks/baseline/baseline.json \
+                  benchmarks/reports/latest.json benchmarks/reports/regressions.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          DATE_UTC="$(date -u +%Y-%m-%d)"
+          git commit -m "chore(bench): weekly benchmark ${DATE_UTC} (${GITHUB_SHA:0:8})
+
+          Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          # `push` may race with human commits; retry once on rejection.
+          git push origin HEAD:main || {
+            git pull --rebase origin main
+            git push origin HEAD:main
+          }
+
+      # --------------------------------------------------------------
+      # Always upload artifacts, even on partial failure, so we can
+      # inspect a broken run.
+      # --------------------------------------------------------------
+      - name: Upload benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ github.run_id }}
+          path: |
+            benchmarks/reports/
+            benchmarks/history/
+            benchmarks/baseline/
+          if-no-files-found: warn
+
+      # --------------------------------------------------------------
+      # Signal failure ONLY if the run itself broke — regressions
+      # surface via the Slack watcher (a separate scheduled task) so
+      # they never gate the pipeline.
+      # --------------------------------------------------------------
+      - name: Report regression count (non-fatal)
+        if: always()
+        run: |
+          if [ -f benchmarks/reports/regressions.json ]; then
+            COUNT=$(jq '.regressions | length' benchmarks/reports/regressions.json)
+            echo "Regressions detected: $COUNT"
+          fi

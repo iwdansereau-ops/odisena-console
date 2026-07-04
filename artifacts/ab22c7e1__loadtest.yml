@@ -1,0 +1,132 @@
+name: Load Test
+
+# Runs the continuous-churn load test on every push to main.
+#
+# The test writes loadtest_summary.txt with max GC pause and max ingest
+# latency; a Python check step parses it and fails the build if either
+# threshold is exceeded. The raw summary is always uploaded as an artifact
+# so failures can be investigated post-mortem without re-running the test.
+
+on:
+  push:
+    branches: [main]
+  # Manual trigger for on-demand runs (useful when investigating a
+  # perf regression against a non-main branch).
+  workflow_dispatch:
+    inputs:
+      max_ingest_ms:
+        description: "Fail if max ingest latency exceeds this many ms"
+        required: false
+        default: "200"
+      max_gc_pause_ms:
+        description: "Fail if max GC pause exceeds this many ms"
+        required: false
+        default: "10"
+
+# Cancel superseded runs on the same ref so we don't waste minutes on
+# stale commits — the load test is 5+ seconds of measurement and we care
+# about the newest push, not every intermediate commit.
+concurrency:
+  group: loadtest-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  loadtest:
+    name: Continuous churn load test
+    runs-on: ubuntu-latest
+    # Small hard cap so a hang can't burn a full 6-hour job slot.
+    timeout-minutes: 10
+
+    # The Go test file lives at the repo root here. If the module ever
+    # moves under a subdirectory, adjust WORKING_DIR.
+    env:
+      WORKING_DIR: .
+      AGGREGATOR_LOADTEST: "1"
+      # Pin the perf-relevant runtime knobs so CI results are
+      # reproducible from one run to the next. GOGC=100 is the default,
+      # but making it explicit documents that we're measuring the
+      # default runtime behavior, not a tuned configuration.
+      GOGC: "100"
+      GOMEMLIMIT: "off"
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+          cache: true
+          cache-dependency-path: ${{ env.WORKING_DIR }}/go.sum
+
+      - name: Set up Python
+        # Python is used by check_loadtest.py — no external deps.
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Self-test the parser BEFORE running the (much longer) Go test.
+      # This way, a bad parser change fails in ~1 second instead of
+      # ~6 seconds, and we never miss a real regression because the
+      # parser silently returned "no threshold breach".
+      - name: Sanity-check the summary parser
+        working-directory: ${{ env.WORKING_DIR }}/.github/scripts
+        run: python3 -m unittest test_check_loadtest -v
+
+      - name: Build the module
+        working-directory: ${{ env.WORKING_DIR }}
+        run: go build ./...
+
+      - name: Run continuous churn load test
+        id: run_loadtest
+        working-directory: ${{ env.WORKING_DIR }}
+        # -count=1 disables the test cache so we always get a fresh run.
+        # -timeout gives the runner room to swap and still finish.
+        # tee lets us keep the raw stdout as an artifact too.
+        run: |
+          set -o pipefail
+          go test \
+            -run TestContinuousChurn200msGCBudget \
+            -v \
+            -count=1 \
+            -timeout=5m \
+            ./... 2>&1 | tee loadtest_output.log
+
+      # Upload the raw summary and stdout on every outcome (success,
+      # failure, cancel), so post-failure analysis is always possible.
+      # if: always() is the critical bit — the default is to skip on
+      # failure of a prior step.
+      - name: Upload load test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: loadtest-summary-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.WORKING_DIR }}/loadtest_summary.txt
+            ${{ env.WORKING_DIR }}/loadtest_output.log
+          if-no-files-found: warn
+          # 90 days is plenty for perf regression investigation; longer
+          # retention costs storage without adding investigative value.
+          retention-days: 90
+
+      # This runs after upload so the artifact is preserved even when
+      # the check step fails the job.
+      - name: Enforce ingest and GC thresholds
+        if: always() && steps.run_loadtest.conclusion != 'cancelled'
+        working-directory: ${{ env.WORKING_DIR }}
+        env:
+          # Fall back to defaults when not dispatched manually. The
+          # ${{ ... || 'x' }} shorthand doesn't work here because
+          # workflow_dispatch inputs are the empty string on push
+          # events; we defensively default in shell instead.
+          MAX_INGEST_MS: ${{ github.event.inputs.max_ingest_ms || '200' }}
+          MAX_GC_PAUSE_MS: ${{ github.event.inputs.max_gc_pause_ms || '10' }}
+        run: |
+          python3 .github/scripts/check_loadtest.py \
+            --summary loadtest_summary.txt \
+            --max-ingest-ms "${MAX_INGEST_MS}" \
+            --max-gc-pause-ms "${MAX_GC_PAUSE_MS}"

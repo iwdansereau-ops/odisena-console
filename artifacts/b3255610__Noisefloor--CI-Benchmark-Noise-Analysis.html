@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Noise Floor — CI Benchmark Environment Analysis</title>
+<meta name="description" content="Quantify jitter, wall-clock variance, and instruction-count stability across five CI runner environments. Choose the right runner for regression benchmarks." />
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=jetbrains-mono@400,500,700&f[]=inter@400,500,600,700&display=swap" />
+<link rel="stylesheet" href="./style.css" />
+<link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="%2300E5A0"/><path d="M6 22 L12 14 L16 18 L20 10 L26 22" stroke="%23000" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>' />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ─── Sidebar ─────────────────────────────────────────────────────── -->
+  <aside class="sidebar" aria-label="Environments">
+    <div class="brand">
+      <svg class="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="6" fill="var(--accent)"/>
+        <path d="M6 22 L12 14 L16 18 L20 10 L26 22" stroke="#0a0a0a" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="brand-text">
+        <div class="brand-name">noisefloor</div>
+        <div class="brand-sub">CI runner analysis</div>
+      </div>
+    </div>
+
+    <nav class="side-nav">
+      <div class="nav-label">Views</div>
+      <button class="nav-item active" data-view="scorecard">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-4 4 3 5-6"/></svg>
+        Scorecard
+      </button>
+      <button class="nav-item" data-view="distributions">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="12" width="3" height="8"/><rect x="8" y="7" width="3" height="13"/><rect x="13" y="4" width="3" height="16"/><rect x="18" y="10" width="3" height="10"/></svg>
+        Distributions
+      </button>
+      <button class="nav-item" data-view="timeseries">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l4-6 4 3 5-8 5 5"/></svg>
+        Run timeline
+      </button>
+      <button class="nav-item" data-view="instructions">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6M7 17h8"/></svg>
+        Instruction variance
+      </button>
+      <button class="nav-item" data-view="matrix">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Environment matrix
+      </button>
+      <button class="nav-item" data-view="methodology">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>
+        Methodology
+      </button>
+    </nav>
+
+    <div class="side-legend">
+      <div class="nav-label">Environments</div>
+      <div id="env-legend"></div>
+    </div>
+
+    <div class="side-foot">
+      <div class="foot-row"><span>Total runs</span><b id="foot-runs">—</b></div>
+      <div class="foot-row"><span>Environments</span><b>5</b></div>
+      <div class="foot-row"><span>Workloads</span><b>3</b></div>
+      <div class="foot-row"><span>Generated</span><b id="foot-gen">—</b></div>
+    </div>
+  </aside>
+
+  <!-- ─── Header ──────────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <h1 id="view-title">CI Runner Scorecard</h1>
+      <p id="view-sub" class="topbar-sub">Ranked by composite noise-floor stability across all workloads.</p>
+    </div>
+    <div class="topbar-right">
+      <div class="segmented" role="tablist" aria-label="Workload filter">
+        <span class="seg-label">Workload</span>
+        <button class="seg active" data-wl="all">All</button>
+        <button class="seg" data-wl="matmul-1024">MatMul</button>
+        <button class="seg" data-wl="primes-1e7">Primes</button>
+        <button class="seg" data-wl="sha256-100mb">SHA-256</button>
+      </div>
+      <button class="icon-btn" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ─── Main ────────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- ── VIEW: Scorecard ────────────────────────────────────────────── -->
+    <section class="view" data-view="scorecard">
+
+      <div class="kpi-grid">
+        <div class="kpi" id="kpi-winner">
+          <div class="kpi-label">Recommended runner</div>
+          <div class="kpi-value" id="kpi-winner-val">—</div>
+          <div class="kpi-foot">for benchmark regression testing</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Lowest wall-clock CV</div>
+          <div class="kpi-value mono" id="kpi-low-cv">—</div>
+          <div class="kpi-foot" id="kpi-low-cv-env">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Highest jitter env</div>
+          <div class="kpi-value mono" id="kpi-high-cv">—</div>
+          <div class="kpi-foot" id="kpi-high-cv-env">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Instruction-count drift</div>
+          <div class="kpi-value mono" id="kpi-instr">—</div>
+          <div class="kpi-foot">avg. CV across environments</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Cost per stable run</div>
+          <div class="kpi-value mono" id="kpi-cost">—</div>
+          <div class="kpi-foot">$ / benchmark hour, adjusted</div>
+        </div>
+      </div>
+
+      <div class="card scorecard-card">
+        <div class="card-head">
+          <h2>Environment scorecard</h2>
+          <p class="card-sub">Composite score weighs wall-clock CV (50%), instruction stability (35%), and throughput (15%). Higher is better.</p>
+        </div>
+        <div class="scorecard-table-wrap">
+          <table class="scorecard-table" id="scorecard-table">
+            <thead>
+              <tr>
+                <th style="width:36px">#</th>
+                <th>Environment</th>
+                <th>Hardware</th>
+                <th class="num">Median (ms)</th>
+                <th class="num">CV %</th>
+                <th class="num">Jitter (p99−min)</th>
+                <th class="num">Instr CV %</th>
+                <th class="num">Outliers</th>
+                <th class="num">$/hr</th>
+                <th class="num">Score</th>
+                <th style="width:80px"></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head">
+            <h2>Composite score by environment</h2>
+            <p class="card-sub">Bars are stacked contributions: variance, instruction stability, throughput.</p>
+          </div>
+          <div class="score-bars" id="score-bars"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Verdict</h2>
+            <p class="card-sub">Choosing a runner for regression benchmarks</p>
+          </div>
+          <div class="verdict" id="verdict"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── VIEW: Distributions ────────────────────────────────────────── -->
+    <section class="view" data-view="distributions" hidden>
+      <div class="card">
+        <div class="card-head">
+          <h2>Wall-clock distribution — violin + box</h2>
+          <p class="card-sub">Each violin is 200 back-to-back runs. Wider = more common. Box = IQR. Dot = median.</p>
+        </div>
+        <div class="chart-scroll">
+          <svg id="violin" viewBox="0 0 900 460" preserveAspectRatio="xMidYMid meet" aria-label="Violin plot"></svg>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head">
+            <h2>Coefficient of variation</h2>
+            <p class="card-sub">σ / μ × 100. Lower CV = tighter, more repeatable timings.</p>
+          </div>
+          <div class="hbars" id="cv-bars"></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2>Jitter range (max − min)</h2>
+            <p class="card-sub">Peak-to-peak wall-clock spread across the run cohort.</p>
+          </div>
+          <div class="hbars" id="jitter-bars"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── VIEW: Time series ──────────────────────────────────────────── -->
+    <section class="view" data-view="timeseries" hidden>
+      <div class="card">
+        <div class="card-head">
+          <h2>Run-by-run wall-clock timeline</h2>
+          <p class="card-sub">Each point is one run. Spikes reveal noisy neighbors, cgroup throttling, GC pauses.</p>
+        </div>
+        <div class="chart-scroll">
+          <svg id="timeseries" viewBox="0 0 1000 460" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+        <div class="ts-legend" id="ts-legend"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Rolling median (window = 10 runs)</h2>
+          <p class="card-sub">Smoothed to expose systemic drift vs. one-off outliers.</p>
+        </div>
+        <div class="chart-scroll">
+          <svg id="rolling" viewBox="0 0 1000 340" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── VIEW: Instructions ─────────────────────────────────────────── -->
+    <section class="view" data-view="instructions" hidden>
+      <div class="kpi-strip">
+        <div class="mini-kpi">
+          <span>Instructions per run should be near-deterministic.</span>
+          <b>ASLR + memory layout + JIT stochasticity are the usual noise sources — hypervisors amplify all three.</b>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Retired instructions — mean ± σ (via cachegrind)</h2>
+          <p class="card-sub">QEMU's user-mode translation multiplies retired instructions ~6×. Bare-metal is the reference.</p>
+        </div>
+        <div id="instr-chart" class="instr-chart"></div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head">
+            <h2>L1 D-cache miss variance</h2>
+            <p class="card-sub">Run-to-run CV of L1 data-cache misses. Higher = more cache disturbance from co-tenants.</p>
+          </div>
+          <div class="hbars" id="cache-bars"></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2>Context switches per run</h2>
+            <p class="card-sub">Direct signal of scheduler pressure. Bare-metal &lt; 30, QEMU &gt; 500.</p>
+          </div>
+          <div class="hbars" id="ctx-bars"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── VIEW: Environment matrix ───────────────────────────────────── -->
+    <section class="view" data-view="matrix" hidden>
+      <div class="card">
+        <div class="card-head">
+          <h2>Detailed environment matrix</h2>
+          <p class="card-sub">Every environment × every workload. Click a cell to inspect its run distribution.</p>
+        </div>
+        <div class="matrix-scroll">
+          <table class="matrix-table" id="matrix-table"></table>
+        </div>
+      </div>
+
+      <div class="card" id="drill-card" hidden>
+        <div class="card-head">
+          <h2 id="drill-title">Drill-down</h2>
+          <p class="card-sub" id="drill-sub"></p>
+        </div>
+        <div class="drill-grid">
+          <div class="drill-stat"><span>Median</span><b id="d-median">—</b></div>
+          <div class="drill-stat"><span>Min</span><b id="d-min">—</b></div>
+          <div class="drill-stat"><span>Max</span><b id="d-max">—</b></div>
+          <div class="drill-stat"><span>p95</span><b id="d-p95">—</b></div>
+          <div class="drill-stat"><span>p99</span><b id="d-p99">—</b></div>
+          <div class="drill-stat"><span>σ</span><b id="d-std">—</b></div>
+          <div class="drill-stat"><span>CV</span><b id="d-cv">—</b></div>
+          <div class="drill-stat"><span>MAD</span><b id="d-mad">—</b></div>
+        </div>
+        <div class="chart-scroll">
+          <svg id="drill-chart" viewBox="0 0 900 260" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── VIEW: Methodology ──────────────────────────────────────────── -->
+    <section class="view" data-view="methodology" hidden>
+      <div class="two-col">
+        <div class="card prose">
+          <div class="card-head"><h2>Methodology</h2></div>
+          <p>Each of five CI environments executed three CPU-intensive workloads 200 times back-to-back on a pinned core with Turbo Boost disabled. Wall-clock time is <code>clock_gettime(CLOCK_MONOTONIC)</code>. Retired instructions and L1 D-cache misses come from a separate run under <code>valgrind --tool=cachegrind</code>, which is deterministic modulo ASLR and layout stochasticity.</p>
+          <p>The composite score weighs three noise-floor dimensions:</p>
+          <ul>
+            <li><b>Wall-clock CV (50%)</b> — the primary target for benchmark regression detection.</li>
+            <li><b>Instruction CV (35%)</b> — how deterministic the retired-instruction count is. Any drift here means the runner cannot be trusted for micro-regression detection.</li>
+            <li><b>Throughput (15%)</b> — median wall time. Cheap noise is still noise, but slow runners burn CI budget.</li>
+          </ul>
+          <p>Warm-up (first 3 runs) is excluded from statistics; it is retained in the timeline view so cold-start effects remain visible.</p>
+        </div>
+        <div class="card prose">
+          <div class="card-head"><h2>Environments tested</h2></div>
+          <dl id="env-details"></dl>
+        </div>
+      </div>
+
+      <div class="card prose">
+        <div class="card-head"><h2>How to read the scorecard</h2></div>
+        <p>A regression benchmark is only useful if its noise floor is smaller than the effect you are trying to detect. If your target regression is a 3% wall-clock slowdown, you need CV well below 1% — anything above and false positives will drown the signal.</p>
+        <p>QEMU user-mode ARM emulation appears here as a cautionary tale: retired instruction counts inflate ~6× from translation overhead, and their variance jumps by more than an order of magnitude. Cross-arch benchmarks belong on native hardware.</p>
+        <p>Docker containers with tight cgroup CPU quotas produce a signature failure mode — clean-looking medians hiding periodic tail spikes as the quota window resets. Watch p99 more than mean.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="tooltip" class="tooltip" hidden></div>
+
+<script src="./app.js" type="module"></script>
+<script data-pplx-inline-edit>
+(function () {
+  if (window === window.top) return;
+
+  const allowedParentOrigins = ["https://www.perplexity.ai","https://perplexity.ai","https://testing.perplexity.ai","https://staging.perplexity.ai","https://*.preview.i.perplexity.ai","http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"];
+  const MAX_FONT_BYTES = 500 * 1024;
+  const MAX_TOTAL_FONT_BYTES = 2 * 1024 * 1024;
+  let scrollForwarding = false;
+  let scrollRaf = 0;
+  let trustedTopOrigin = null;
+
+  // Allow entries like "https://*.preview.i.perplexity.ai" — the wildcard
+  // matches a single DNS label (no dots), so "https://*.foo" cannot stretch
+  // across multiple labels.
+  function matchesAllowedOrigin(origin) {
+    if (!origin) return false;
+    for (const entry of allowedParentOrigins) {
+      if (!entry.includes("*")) {
+        if (entry === origin) return true;
+        continue;
+      }
+      const pattern = new RegExp(
+        "^" +
+          entry.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^.]+") +
+          "$",
+      );
+      if (pattern.test(origin)) return true;
+    }
+    return false;
+  }
+
+  // Trust decision: when the sender is same-origin-visible (event.origin is a
+  // real origin like https://www.perplexity.ai) we trust event.origin directly.
+  // When event.origin is "null" (opaque broker srcdoc), we fall back to the
+  // broker's stamped `parentOrigin` to identify the top window. The fallback
+  // is claim-only — we rely on the browser's native `targetOrigin` enforcement
+  // on the response path (see postToTrustedTop) to ensure replies can't be
+  // delivered to anyone but the actual top window of that claimed origin.
+  function getTrustedParentOrigin(event) {
+    const forwardedParentOrigin =
+      typeof event.data.parentOrigin === "string" ? event.data.parentOrigin : null;
+    const parentOrigin = event.origin === "null" ? forwardedParentOrigin : event.origin;
+    return matchesAllowedOrigin(parentOrigin) ? parentOrigin : null;
+  }
+
+  // All responses go to window.top with targetOrigin = the allowlisted origin.
+  // An attacker that iframes us inside their own null-origin broker can claim
+  // any parentOrigin they like, but the browser will drop the reply whenever
+  // the real top's origin doesn't match — so the screenshot never leaves.
+  function postToTrustedTop(message) {
+    if (!trustedTopOrigin) return;
+    try {
+      window.top.postMessage(message, trustedTopOrigin);
+    } catch (_error) {}
+  }
+
+  function inlineAll(original, clone) {
+    if (original.nodeType !== 1 || clone.nodeType !== 1) return;
+
+    try {
+      const computedStyle = getComputedStyle(original);
+      // cssText on a computed style is the serialized declaration in modern
+      // Chromium/Safari — a single read beats enumerating ~400 longhand
+      // properties. Firefox returns "" here, so we fall back on empty.
+      const serialized = computedStyle.cssText;
+      if (serialized) {
+        clone.style.cssText = serialized;
+      } else {
+        const parts = new Array(computedStyle.length);
+        for (let index = 0; index < computedStyle.length; index += 1) {
+          const property = computedStyle[index];
+          parts[index] = `${property}:${computedStyle.getPropertyValue(property)};`;
+        }
+        clone.style.cssText = parts.join("");
+      }
+    } catch (_error) {}
+
+    const originalChildren = original.children;
+    const clonedChildren = clone.children;
+    for (
+      let index = 0;
+      index < originalChildren.length && index < clonedChildren.length;
+      index += 1
+    ) {
+      inlineAll(originalChildren[index], clonedChildren[index]);
+    }
+  }
+
+  function extractFontUrl(srcValue) {
+    const matches = [
+      ...srcValue.matchAll(
+        /url\(["']?([^"')]+)["']?\)(?:\s*format\(["']?([^"')]+)["']?\))?/gi,
+      ),
+    ];
+    if (matches.length === 0) return null;
+    const woff2 = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff2"));
+    if (woff2) return woff2[1];
+    const woff = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff"));
+    if (woff) return woff[1];
+    return matches[0][1];
+  }
+
+  // Cache resolved font URL -> data URI across captures. Fonts on a page
+  // essentially never change, and a batch run emits multiple captures back to
+  // back — without this we'd refetch + re-base64 every time.
+  const fontDataUriCache = new Map();
+  const SRC_DECLARATION_RE = /src\s*:\s*[^;}]+/i;
+
+  async function fetchAsDataUri(url) {
+    if (fontDataUriCache.has(url)) return fontDataUriCache.get(url);
+    let dataUri = null;
+    try {
+      const response = await fetch(url, { mode: "cors", credentials: "omit" });
+      if (response.ok) {
+        const blob = await response.blob();
+        if (blob.size <= MAX_FONT_BYTES) {
+          dataUri = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () =>
+              resolve(typeof reader.result === "string" ? reader.result : null);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          });
+        }
+      }
+    } catch (_error) {
+      dataUri = null;
+    }
+    fontDataUriCache.set(url, dataUri);
+    return dataUri;
+  }
+
+  function collectFontFaceRuleTexts() {
+    const rules = [];
+    for (const sheet of document.styleSheets) {
+      let cssRules;
+      try {
+        cssRules = sheet.cssRules;
+      } catch (_error) {
+        continue;
+      }
+      if (!cssRules) continue;
+      for (const rule of cssRules) {
+        const cssText = rule.cssText || "";
+        if (cssText.startsWith("@font-face")) rules.push(cssText);
+      }
+    }
+    return rules;
+  }
+
+  async function buildInlinedFontCss() {
+    const ruleTexts = collectFontFaceRuleTexts();
+    if (ruleTexts.length === 0) return null;
+
+    const resolved = ruleTexts.map((cssText) => {
+      if (!SRC_DECLARATION_RE.test(cssText)) return null;
+      const srcMatch = cssText.match(/src\s*:\s*([^;}]+)[;}]/i);
+      if (!srcMatch) return null;
+      const url = extractFontUrl(srcMatch[1]);
+      if (!url) return null;
+      try {
+        return { cssText, url: new URL(url, document.baseURI).href };
+      } catch (_error) {
+        return null;
+      }
+    });
+
+    const dataUris = await Promise.all(
+      resolved.map((entry) => (entry ? fetchAsDataUri(entry.url) : Promise.resolve(null))),
+    );
+
+    const inlined = [];
+    let totalBytes = 0;
+    for (let index = 0; index < resolved.length; index += 1) {
+      const entry = resolved[index];
+      const dataUri = dataUris[index];
+      if (!entry || !dataUri) continue;
+      const approxBytes = dataUri.length * 0.75;
+      if (totalBytes + approxBytes > MAX_TOTAL_FONT_BYTES) break;
+      totalBytes += approxBytes;
+      inlined.push(entry.cssText.replace(SRC_DECLARATION_RE, `src: url("${dataUri}")`));
+    }
+    return inlined.length > 0 ? inlined.join("\n") : null;
+  }
+
+  function stripExternal(clone) {
+    const images = clone.querySelectorAll("img");
+    for (let index = 0; index < images.length; index += 1) {
+      const src = images[index].getAttribute("src");
+      if (src && !src.startsWith("data:")) images[index].removeAttribute("src");
+    }
+
+    const elements = clone.querySelectorAll("*");
+    for (let index = 0; index < elements.length; index += 1) {
+      const style = elements[index].style.cssText;
+      if (style && style.includes("url(")) {
+        elements[index].style.cssText = style.replace(
+          /url\(["']?(?!data:)[^)"']*["']?\)/gi,
+          "none",
+        );
+      }
+    }
+  }
+
+  function emitScroll() {
+    scrollRaf = 0;
+    if (!scrollForwarding) return;
+    postToTrustedTop({
+      type: "INLINE_EDIT_SCROLL",
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+    });
+  }
+
+  window.addEventListener(
+    "scroll",
+    function () {
+      if (!scrollForwarding || scrollRaf) return;
+      scrollRaf = requestAnimationFrame(emitScroll);
+    },
+    { passive: true, capture: true },
+  );
+
+  async function handleCaptureRequest(event) {
+    const requestId = event.data.requestId;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    function postResult(dataUrl) {
+      postToTrustedTop({
+        type: "INLINE_EDIT_SCREENSHOT_RESULT",
+        requestId,
+        dataUrl,
+        scrollX,
+        scrollY,
+      });
+    }
+
+    try {
+      // Wait for any pending web fonts to resolve so both inline metrics and
+      // the @font-face inlining below see the same loaded faces.
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.ready;
+        } catch (_error) {}
+      }
+
+      const clone = document.documentElement.cloneNode(true);
+      inlineAll(document.documentElement, clone);
+
+      const removedNodes = clone.querySelectorAll("script,link[rel=\"stylesheet\"],style");
+      for (let index = 0; index < removedNodes.length; index += 1) {
+        removedNodes[index].remove();
+      }
+
+      stripExternal(clone);
+
+      // Re-embed web fonts as data-URI @font-face rules so the SVG rasterizer
+      // can resolve them — external font URLs aren't fetched during
+      // foreignObject rendering, which would otherwise force a fallback face
+      // and change text metrics.
+      const inlinedFontCss = await buildInlinedFontCss();
+      if (inlinedFontCss) {
+        const styleEl = document.createElement("style");
+        styleEl.textContent = inlinedFontCss;
+        const head = clone.querySelector("head");
+        if (head) head.appendChild(styleEl);
+        else clone.insertBefore(styleEl, clone.firstChild);
+      }
+
+      const html = new XMLSerializer().serializeToString(clone);
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+        '<foreignObject width="100%" height="100%">' +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden">` +
+        `<div style="position:relative;left:-${scrollX}px;top:-${scrollY}px">` +
+        html +
+        "</div></div></foreignObject></svg>";
+      const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      const image = new Image();
+      image.onload = function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(image, 0, 0);
+        postResult(canvas.toDataURL("image/png"));
+      };
+      image.onerror = function () {
+        postResult(null);
+      };
+      image.src = svgUrl;
+    } catch (_error) {
+      postResult(null);
+    }
+  }
+
+  window.addEventListener("message", function (event) {
+    if (!event.data) return;
+    // Only accept messages from the direct parent frame. Blocks sibling /
+    // unrelated-window postMessage senders that could otherwise reach us.
+    if (event.source !== window.parent) return;
+
+    const trustedParentOrigin = getTrustedParentOrigin(event);
+    if (!trustedParentOrigin) return;
+    trustedTopOrigin = trustedParentOrigin;
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_START") {
+      scrollForwarding = true;
+      emitScroll();
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_STOP") {
+      scrollForwarding = false;
+      if (scrollRaf) cancelAnimationFrame(scrollRaf);
+      scrollRaf = 0;
+      return;
+    }
+
+    if (event.data.type !== "INLINE_EDIT_CAPTURE_REQUEST") return;
+
+    handleCaptureRequest(event);
+  });
+})();
+
+
+</script></body>
+</html>

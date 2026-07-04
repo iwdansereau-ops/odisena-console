@@ -1,0 +1,508 @@
+name: CI
+
+# Runs on every push/PR to main plus manual dispatch.
+# The full cycle: tidy check -> lint -> unit tests -> ocb build -> smoke test
+# -> binary-size check (with baseline comparison and sticky PR comment).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Default to least-privilege; individual jobs escalate where needed.
+permissions:
+  contents: read
+
+# Pinned versions in one place so bumping the Collector is a one-line change.
+env:
+  GO_VERSION: "1.23"
+  OCB_VERSION: "0.155.0"
+  GOLANGCI_LINT_VERSION: "v2.1.1"
+  EXPORTER_DIR: exporter/logexporter
+  # Threshold in percent above which a size increase fails PR checks.
+  SIZE_INCREASE_THRESHOLD_PCT: "5"
+  # Orphan branch used to persist the latest main-branch binary size.
+  SIZE_BASELINE_BRANCH: binary-size
+
+jobs:
+  # ===========================================================================
+  # 1. build-and-smoke-test — the full local cycle. Produces `otelcol-custom`
+  #    as an artifact plus a size record that the next job consumes.
+  # ===========================================================================
+  ci:
+    name: build-and-smoke-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      binary_size: ${{ steps.record_size.outputs.size_bytes }}
+
+    steps:
+      # -------------------------------------------------------------------
+      # Checkout + toolchain
+      # -------------------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: ${{ env.EXPORTER_DIR }}/go.sum
+
+      - name: Show Go version
+        run: go version
+
+      # -------------------------------------------------------------------
+      # go mod tidy — verify checked-in go.mod / go.sum are current.
+      # -------------------------------------------------------------------
+      - name: go mod tidy (verify clean)
+        working-directory: ${{ env.EXPORTER_DIR }}
+        run: |
+          go mod tidy
+          if ! git diff --exit-code -- go.mod go.sum; then
+            echo "::error::go.mod / go.sum are not tidy. Run 'go mod tidy' in ${EXPORTER_DIR} and commit the result."
+            exit 1
+          fi
+
+      - name: go mod download
+        working-directory: ${{ env.EXPORTER_DIR }}
+        run: go mod download
+
+      # -------------------------------------------------------------------
+      # Lint
+      # -------------------------------------------------------------------
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          working-directory: ${{ env.EXPORTER_DIR }}
+          args: --timeout=5m
+
+      - name: go vet
+        working-directory: ${{ env.EXPORTER_DIR }}
+        run: go vet ./...
+
+      # -------------------------------------------------------------------
+      # Unit tests (race + coverage)
+      # -------------------------------------------------------------------
+      - name: Unit tests
+        working-directory: ${{ env.EXPORTER_DIR }}
+        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: ${{ env.EXPORTER_DIR }}/coverage.out
+          if-no-files-found: ignore
+
+      # -------------------------------------------------------------------
+      # OCB build
+      # -------------------------------------------------------------------
+      - name: Install OpenTelemetry Collector Builder (ocb)
+        run: |
+          go install go.opentelemetry.io/collector/cmd/builder@v${OCB_VERSION}
+          ln -s "$(go env GOPATH)/bin/builder" "$(go env GOPATH)/bin/ocb"
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Verify ocb version
+        run: ocb version
+
+      - name: Build custom Collector binary
+        run: ocb --config builder/manifest.yaml
+
+      - name: Confirm binary exists and is executable
+        run: |
+          test -x ./dist/otelcol-custom
+          ./dist/otelcol-custom --version
+
+      - name: Upload Collector binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: otelcol-custom-${{ github.sha }}
+          path: dist/otelcol-custom
+          if-no-files-found: error
+          retention-days: 7
+
+      # -------------------------------------------------------------------
+      # Record binary size — emit a job output and a workflow-run artifact
+      # so downstream jobs (and human debuggers) can consume it. Storing
+      # the size as a plain JSON blob keeps the format forward-compatible
+      # if we later add per-section breakdowns from `size`/`bloaty`.
+      # -------------------------------------------------------------------
+      - name: Record binary size
+        id: record_size
+        run: |
+          BIN=./dist/otelcol-custom
+          SIZE=$(stat -c%s "$BIN")
+          SIZE_HUMAN=$(numfmt --to=iec-i --suffix=B --format="%.2f" "$SIZE")
+          echo "otelcol-custom size: ${SIZE} bytes (${SIZE_HUMAN})"
+
+          mkdir -p size-report
+          cat > size-report/size.json <<EOF
+          {
+            "size_bytes": ${SIZE},
+            "size_human": "${SIZE_HUMAN}",
+            "sha": "${GITHUB_SHA}",
+            "ref": "${GITHUB_REF}",
+            "run_id": "${GITHUB_RUN_ID}",
+            "run_url": "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}",
+            "recorded_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+          # Also drop a workflow-summary line so it's visible without
+          # digging into artifacts.
+          {
+            echo "### Binary size"
+            echo ""
+            echo "- **File:** \`dist/otelcol-custom\`"
+            echo "- **Size:** \`${SIZE}\` bytes (\`${SIZE_HUMAN}\`)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Expose to downstream jobs.
+          echo "size_bytes=${SIZE}" >> "$GITHUB_OUTPUT"
+          echo "size_human=${SIZE_HUMAN}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload size record artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: size-report
+          path: size-report/size.json
+          if-no-files-found: error
+
+      # -------------------------------------------------------------------
+      # Smoke test — start Collector, push traces via telemetrygen, verify.
+      # -------------------------------------------------------------------
+      - name: Install telemetrygen
+        run: |
+          go install github.com/open-telemetry/opentelemetry-collector-contrib/cmd/telemetrygen@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Start Collector in background
+        run: |
+          mkdir -p smoke
+          ./dist/otelcol-custom --config config.yaml \
+            > smoke/collector.log 2>&1 &
+          echo $! > smoke/collector.pid
+          echo "Started Collector with PID $(cat smoke/collector.pid)"
+
+      - name: Wait for OTLP receiver to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/4317) 2>/dev/null; then
+              echo "OTLP receiver is up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Collector did not open port 4317 in 30s"
+          echo "----- collector.log -----"
+          cat smoke/collector.log || true
+          exit 1
+
+      - name: Generate test traces with telemetrygen
+        run: |
+          telemetrygen traces \
+            --otlp-endpoint 127.0.0.1:4317 \
+            --otlp-insecure \
+            --traces 50 \
+            --workers 2 \
+            --rate 25 \
+            --service ci-smoke-test
+
+      - name: Give the pipeline a moment to flush
+        run: sleep 3
+
+      - name: Stop Collector gracefully
+        if: always()
+        run: |
+          if [ -f smoke/collector.pid ]; then
+            PID=$(cat smoke/collector.pid)
+            if kill -0 "$PID" 2>/dev/null; then
+              kill -TERM "$PID"
+              for i in $(seq 1 10); do
+                kill -0 "$PID" 2>/dev/null || break
+                sleep 1
+              done
+              kill -0 "$PID" 2>/dev/null && kill -KILL "$PID" || true
+            fi
+          fi
+
+      - name: Verify Collector processed the traces
+        run: |
+          LOG=smoke/collector.log
+          echo "----- collector.log (tail) -----"
+          tail -n 80 "$LOG" || true
+          echo "--------------------------------"
+
+          grep -q "log exporter started" "$LOG" \
+            || { echo "::error::log exporter never announced startup"; exit 1; }
+
+          SPAN_LINES=$(grep -c '"logexporter"' "$LOG" || true)
+          echo "logexporter log lines: ${SPAN_LINES}"
+          if [ "${SPAN_LINES}" -lt 2 ]; then
+            echo "::error::Expected the log exporter to emit span lines; got ${SPAN_LINES}"
+            exit 1
+          fi
+
+          if grep -Eiq '"level":"(error|fatal|panic)"|\bpanic:\s' "$LOG"; then
+            echo "::error::Collector logged an error/fatal/panic during the smoke test"
+            grep -Ei '"level":"(error|fatal|panic)"|\bpanic:\s' "$LOG" | head -n 20
+            exit 1
+          fi
+
+          echo "Smoke test passed."
+
+      - name: Upload smoke-test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-logs
+          path: smoke/
+          if-no-files-found: ignore
+
+  # ===========================================================================
+  # 2. binary-size-check — runs after `ci` succeeds.
+  #
+  #    On PRs: fetches the baseline size from the `binary-size` branch,
+  #            computes the delta, posts/updates a sticky PR comment, and
+  #            fails the job if the increase exceeds SIZE_INCREASE_THRESHOLD_PCT.
+  #
+  #    On main pushes: replaces the baseline in the `binary-size` branch with
+  #            the new size so future PRs compare against fresh main.
+  # ===========================================================================
+  binary-size-check:
+    name: binary-size-check
+    runs-on: ubuntu-latest
+    needs: ci
+    timeout-minutes: 5
+
+    # Scoped, minimal write permissions for the two things this job needs.
+    permissions:
+      contents: write         # push the baseline update on main
+      pull-requests: write    # post/update sticky comment on PRs
+
+    steps:
+      - name: Checkout (for git identity + push access)
+        uses: actions/checkout@v5
+        with:
+          # Use the default token; on `pull_request` from forks this will be
+          # read-only and the comment step will be skipped gracefully.
+          persist-credentials: true
+          fetch-depth: 1
+
+      - name: Download new size record
+        uses: actions/download-artifact@v4
+        with:
+          name: size-report
+          path: size-report
+
+      - name: Fetch baseline size from ${{ env.SIZE_BASELINE_BRANCH }}
+        id: baseline
+        run: |
+          mkdir -p baseline
+          # `git fetch` won't fail if the remote branch doesn't exist yet; we
+          # handle "no baseline" as a first-run case below.
+          if git fetch origin "${SIZE_BASELINE_BRANCH}:${SIZE_BASELINE_BRANCH}" 2>/dev/null; then
+            if git show "${SIZE_BASELINE_BRANCH}:size.json" > baseline/size.json 2>/dev/null; then
+              echo "baseline_present=true" >> "$GITHUB_OUTPUT"
+              echo "Found existing baseline:"
+              cat baseline/size.json
+            else
+              echo "baseline_present=false" >> "$GITHUB_OUTPUT"
+              echo "Branch ${SIZE_BASELINE_BRANCH} exists but has no size.json"
+            fi
+          else
+            echo "baseline_present=false" >> "$GITHUB_OUTPUT"
+            echo "No ${SIZE_BASELINE_BRANCH} branch yet; this is a first run."
+          fi
+
+      - name: Compute size delta
+        id: delta
+        run: |
+          NEW=$(jq -r '.size_bytes' size-report/size.json)
+          NEW_HUMAN=$(jq -r '.size_human' size-report/size.json)
+
+          if [ "${{ steps.baseline.outputs.baseline_present }}" = "true" ]; then
+            OLD=$(jq -r '.size_bytes' baseline/size.json)
+            OLD_HUMAN=$(jq -r '.size_human' baseline/size.json)
+            OLD_SHA=$(jq -r '.sha' baseline/size.json)
+          else
+            OLD=""
+            OLD_HUMAN="—"
+            OLD_SHA="—"
+          fi
+
+          if [ -n "$OLD" ] && [ "$OLD" -gt 0 ]; then
+            # Signed byte delta.
+            DELTA=$((NEW - OLD))
+            # Percentage with two decimals via awk (bash lacks floats).
+            PCT=$(awk -v n="$NEW" -v o="$OLD" 'BEGIN{ printf "%.2f", ((n-o)/o)*100 }')
+            ABS_PCT=$(awk -v p="$PCT" 'BEGIN{ if (p<0) p=-p; printf "%.2f", p }')
+            # Human-readable signed delta (e.g. "+1.23MiB", "-512KiB").
+            if [ "$DELTA" -ge 0 ]; then
+              SIGN="+"
+            else
+              SIGN="-"
+            fi
+            DELTA_HUMAN="${SIGN}$(numfmt --to=iec-i --suffix=B --format="%.2f" ${DELTA#-})"
+
+            # Verdict against threshold.
+            OVER_THRESHOLD=$(awk \
+              -v p="$PCT" -v t="$SIZE_INCREASE_THRESHOLD_PCT" \
+              'BEGIN{ print (p > t) ? "true" : "false" }')
+
+            if [ "$OVER_THRESHOLD" = "true" ]; then
+              VERDICT="fail"
+              EMOJI="🚨"
+              HEADLINE="Binary grew by ${PCT}% (threshold: ${SIZE_INCREASE_THRESHOLD_PCT}%)"
+            elif [ "$DELTA" -gt 0 ]; then
+              VERDICT="pass"
+              EMOJI="⚠️"
+              HEADLINE="Binary grew by ${PCT}% (within ${SIZE_INCREASE_THRESHOLD_PCT}% threshold)"
+            elif [ "$DELTA" -lt 0 ]; then
+              VERDICT="pass"
+              EMOJI="✅"
+              HEADLINE="Binary shrank by ${ABS_PCT}%"
+            else
+              VERDICT="pass"
+              EMOJI="✅"
+              HEADLINE="No change in binary size"
+            fi
+          else
+            DELTA=""
+            DELTA_HUMAN="—"
+            PCT="—"
+            OVER_THRESHOLD="false"
+            VERDICT="pass"
+            EMOJI="ℹ️"
+            HEADLINE="No baseline recorded yet — this run seeds the baseline."
+          fi
+
+          # Emit outputs for later steps.
+          {
+            echo "new_bytes=${NEW}"
+            echo "new_human=${NEW_HUMAN}"
+            echo "old_bytes=${OLD}"
+            echo "old_human=${OLD_HUMAN}"
+            echo "old_sha=${OLD_SHA}"
+            echo "delta_bytes=${DELTA}"
+            echo "delta_human=${DELTA_HUMAN}"
+            echo "pct=${PCT}"
+            echo "over_threshold=${OVER_THRESHOLD}"
+            echo "verdict=${VERDICT}"
+            echo "emoji=${EMOJI}"
+            echo "headline=${HEADLINE}"
+          } >> "$GITHUB_OUTPUT"
+
+          # Human-readable summary in the run UI.
+          {
+            echo "### ${EMOJI} Binary size check"
+            echo ""
+            echo "${HEADLINE}"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|---|---|"
+            echo "| New size    | \`${NEW}\` bytes (\`${NEW_HUMAN}\`) |"
+            echo "| Baseline    | \`${OLD:-—}\` bytes (\`${OLD_HUMAN}\`) |"
+            echo "| Delta       | \`${DELTA_HUMAN}\` (\`${PCT}%\`) |"
+            echo "| Baseline sha| \`${OLD_SHA}\` |"
+            echo "| Threshold   | \`${SIZE_INCREASE_THRESHOLD_PCT}%\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # -------------------------------------------------------------------
+      # PR path: post a sticky comment (created once, updated on each push).
+      # -------------------------------------------------------------------
+      - name: Build PR comment body
+        if: github.event_name == 'pull_request'
+        id: comment_body
+        run: |
+          {
+            echo "body<<COMMENT_EOF"
+            echo "## ${{ steps.delta.outputs.emoji }} Binary size check"
+            echo ""
+            echo "${{ steps.delta.outputs.headline }}"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|---|---|"
+            echo "| New size (\`this PR\`) | \`${{ steps.delta.outputs.new_bytes }}\` bytes (\`${{ steps.delta.outputs.new_human }}\`) |"
+            echo "| Baseline (\`main\`)    | \`${{ steps.delta.outputs.old_bytes }}\` bytes (\`${{ steps.delta.outputs.old_human }}\`) |"
+            echo "| Delta                 | \`${{ steps.delta.outputs.delta_human }}\` (\`${{ steps.delta.outputs.pct }}%\`) |"
+            echo "| Threshold             | \`${{ env.SIZE_INCREASE_THRESHOLD_PCT }}%\` |"
+            echo "| Baseline commit       | \`${{ steps.delta.outputs.old_sha }}\` |"
+            echo ""
+            echo "Binary: \`dist/otelcol-custom\` — [run details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            echo ""
+            echo "<sub>Fails when the increase exceeds \`${{ env.SIZE_INCREASE_THRESHOLD_PCT }}%\` vs. the \`main\` baseline stored on the \`${{ env.SIZE_BASELINE_BRANCH }}\` branch.</sub>"
+            echo "COMMENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post/update sticky PR comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2.9.4
+        with:
+          header: binary-size-check
+          message: ${{ steps.comment_body.outputs.body }}
+
+      - name: Enforce threshold on PRs
+        if: github.event_name == 'pull_request' && steps.delta.outputs.over_threshold == 'true'
+        run: |
+          echo "::error title=Binary size regression::Binary grew by ${{ steps.delta.outputs.pct }}%, exceeding the ${{ env.SIZE_INCREASE_THRESHOLD_PCT }}% threshold."
+          exit 1
+
+      # -------------------------------------------------------------------
+      # main path: update the baseline branch so future PRs compare against
+      # the freshest passing main build. Only runs on push events to main,
+      # never on PRs (even from maintainers).
+      # -------------------------------------------------------------------
+      - name: Update baseline on main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Prepare an isolated workdir so we don't disturb the main checkout.
+          WORK=$(mktemp -d)
+          cp size-report/size.json "$WORK/size.json"
+
+          # Try to check out an existing baseline branch; create an orphan if
+          # it doesn't exist yet.
+          if git ls-remote --exit-code --heads origin "${SIZE_BASELINE_BRANCH}" >/dev/null 2>&1; then
+            git fetch origin "${SIZE_BASELINE_BRANCH}:${SIZE_BASELINE_BRANCH}"
+            git worktree add "$WORK/repo" "${SIZE_BASELINE_BRANCH}"
+          else
+            echo "Seeding new orphan branch ${SIZE_BASELINE_BRANCH}"
+            git worktree add --detach "$WORK/repo"
+            (
+              cd "$WORK/repo"
+              git checkout --orphan "${SIZE_BASELINE_BRANCH}"
+              git rm -rf . >/dev/null 2>&1 || true
+            )
+          fi
+
+          cp "$WORK/size.json" "$WORK/repo/size.json"
+
+          (
+            cd "$WORK/repo"
+            git add size.json
+            if git diff --cached --quiet; then
+              echo "No size change vs. current baseline; skipping commit."
+              exit 0
+            fi
+            git commit -m "chore(size): update baseline to ${GITHUB_SHA::8}
+
+          Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            git push origin "HEAD:${SIZE_BASELINE_BRANCH}"
+          )

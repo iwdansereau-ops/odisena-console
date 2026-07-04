@@ -1,0 +1,44 @@
+# .github/workflows/staging-memory-check.yml
+#
+# Caller for this repo's own memory-check gate. The real logic lives in the
+# reusable workflow next door (staging-memory-check-reusable.yml) so that
+# downstream Go services can invoke the exact same pipeline in six lines.
+#
+# If you're a downstream repo copying this: **do not copy this file**. Copy
+# the 6-line template from .github/workflows/README.md instead — it points at
+# the reusable workflow in this repo by tag.
+
+name: staging-memory-check
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA that was deployed to staging (defaults to HEAD)."
+        required: false
+        type: string
+        default: ""
+      pprof_url:
+        description: "Override pprof base URL (defaults to STAGING_PPROF_URL secret)."
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: staging-memory-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    # Dogfood: this repo points at its own workflow_call file at HEAD of the
+    # default branch so changes to the reusable workflow are self-testing.
+    # Downstream repos should pin a released tag (`@v1`) instead.
+    uses: ./.github/workflows/staging-memory-check-reusable.yml
+    with:
+      # Only override defaults when the workflow_dispatch inputs are set.
+      override_sha:       ${{ inputs.sha       || '' }}
+      override_pprof_url: ${{ inputs.pprof_url || '' }}
+    secrets:
+      pprof_url:   ${{ secrets.STAGING_PPROF_URL }}
+      pprof_token: ${{ secrets.STAGING_PPROF_TOKEN }}

@@ -1,0 +1,270 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "ddb-iam-refactor",
+          "version": "0.1.0",
+          "informationUri": "https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazondynamodb.html",
+          "rules": [
+            {
+              "id": "ACTION_DDB_STAR",
+              "name": "dynamodb:* wildcard",
+              "shortDescription": {
+                "text": "dynamodb:* wildcard"
+              },
+              "fullDescription": {
+                "text": "Grants every DynamoDB permission."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            },
+            {
+              "id": "RESOURCE_STAR",
+              "name": "Resource wildcard \"*\"",
+              "shortDescription": {
+                "text": "Resource wildcard \"*\""
+              },
+              "fullDescription": {
+                "text": "Grants actions on every DynamoDB resource."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            },
+            {
+              "id": "NON_DDB_ACTIONS",
+              "name": "Non-DynamoDB action in DDB policy",
+              "shortDescription": {
+                "text": "Non-DynamoDB action in DDB policy"
+              },
+              "fullDescription": {
+                "text": "Split into a separate policy or statement."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "RESOURCE_STAR_REQUIRED",
+              "name": "Resource \"*\" is required",
+              "shortDescription": {
+                "text": "Resource \"*\" is required"
+              },
+              "fullDescription": {
+                "text": "Service-level actions require Resource \"*\"."
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              }
+            },
+            {
+              "id": "UNKNOWN_ACTION",
+              "name": "Unknown DynamoDB action",
+              "shortDescription": {
+                "text": "Unknown DynamoDB action"
+              },
+              "fullDescription": {
+                "text": "Likely a typo \u2014 not in service authorization reference."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "ACTION_DDB_STAR",
+          "level": "error",
+          "message": {
+            "text": "Action \"dynamodb:*\" grants every DynamoDB permission including DeleteTable and DeleteBackup. Enumerate the specific actions the workload needs."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/insecure_policy.json"
+                },
+                "region": {
+                  "startLine": 1,
+                  "properties": {
+                    "statementIndex": 0,
+                    "sid": "OverlyBroad"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "severity": "high"
+          }
+        },
+        {
+          "ruleId": "RESOURCE_STAR",
+          "level": "error",
+          "message": {
+            "text": "Resource \"*\" grants the listed actions across every DynamoDB resource in the account. Replace with specific table/index/stream ARNs."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/insecure_policy.json"
+                },
+                "region": {
+                  "startLine": 1,
+                  "properties": {
+                    "statementIndex": 0,
+                    "sid": "OverlyBroad"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "severity": "high"
+          }
+        },
+        {
+          "ruleId": "NON_DDB_ACTIONS",
+          "level": "warning",
+          "message": {
+            "text": "Statement mixes non-DynamoDB actions: ['s3:GetObject']. Split into a separate statement or policy for clarity."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/insecure_policy.json"
+                },
+                "region": {
+                  "startLine": 1,
+                  "properties": {
+                    "statementIndex": 1,
+                    "sid": "MixedWithS3"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "severity": "medium",
+            "non_ddb_actions": [
+              "s3:GetObject"
+            ]
+          }
+        },
+        {
+          "ruleId": "RESOURCE_STAR",
+          "level": "error",
+          "message": {
+            "text": "Resource \"*\" grants the listed actions across every DynamoDB resource in the account. Replace with specific table/index/stream ARNs."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/insecure_policy.json"
+                },
+                "region": {
+                  "startLine": 1,
+                  "properties": {
+                    "statementIndex": 1,
+                    "sid": "MixedWithS3"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "severity": "high"
+          }
+        },
+        {
+          "ruleId": "RESOURCE_STAR_REQUIRED",
+          "level": "note",
+          "message": {
+            "text": "Resource \"*\" is required for these service-level list/describe actions and is acceptable here."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/insecure_policy.json"
+                },
+                "region": {
+                  "startLine": 1,
+                  "properties": {
+                    "statementIndex": 2,
+                    "sid": "ServiceLevel"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "severity": "info"
+          }
+        },
+        {
+          "ruleId": "UNKNOWN_ACTION",
+          "level": "warning",
+          "message": {
+            "text": "Action 'dynamodb:GetItm' is not a recognized DynamoDB action (possible typo)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/insecure_policy.json"
+                },
+                "region": {
+                  "startLine": 1,
+                  "properties": {
+                    "statementIndex": 3,
+                    "sid": "TypoAction"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "severity": "medium",
+            "action": "dynamodb:GetItm"
+          }
+        },
+        {
+          "ruleId": "RESOURCE_STAR",
+          "level": "error",
+          "message": {
+            "text": "Resource \"*\" grants the listed actions across every DynamoDB resource in the account. Replace with specific table/index/stream ARNs."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/insecure_policy.json"
+                },
+                "region": {
+                  "startLine": 1,
+                  "properties": {
+                    "statementIndex": 3,
+                    "sid": "TypoAction"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "severity": "high"
+          }
+        }
+      ]
+    }
+  ]
+}

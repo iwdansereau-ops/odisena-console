@@ -1,0 +1,261 @@
+# Recording rules that pre-compute canary vs control comparisons.
+# Deploy to Prometheus Operator via PrometheusRule CRD, or paste directly into
+# the Prometheus rules file.
+#
+# Naming convention: `canary:<metric>:<agg>` — the colon prefix tells
+# reviewers this is a computed series, not a raw metric.
+#
+# All queries assume the pods carry labels `canary.otel.io/track` ∈
+# {canary, control} — set in k8s/collector-daemonset.yaml.
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: otel-collector-canary
+  namespace: observability
+  labels:
+    role: alert-rules
+    release: kube-prometheus
+spec:
+  groups:
+    # -------------------------------------------------------------------
+    # 1. Recording rules — 30s eval interval, keep the raw label set tight
+    # -------------------------------------------------------------------
+    - name: otel-canary.recording
+      interval: 30s
+      rules:
+
+        # p99 of exporter send duration, per track. This is the headline metric.
+        - record: canary:exporter_send_duration_seconds:p99
+          expr: |
+            histogram_quantile(
+              0.99,
+              sum by (le, canary_otel_io_track) (
+                rate(otelcol_exporter_send_duration_bucket{exporter="loadbalancing"}[5m])
+              )
+            )
+
+        # p99 of the loadbalancer's per-backend latency histogram — the actual
+        # metric that captures router-lookup cost in ConsumeTraces.
+        - record: canary:loadbalancer_backend_latency_seconds:p99
+          expr: |
+            histogram_quantile(
+              0.99,
+              sum by (le, canary_otel_io_track) (
+                rate(otelcol_loadbalancer_backend_latency_bucket[5m])
+              )
+            )
+
+        - record: canary:loadbalancer_backend_latency_seconds:p50
+          expr: |
+            histogram_quantile(
+              0.50,
+              sum by (le, canary_otel_io_track) (
+                rate(otelcol_loadbalancer_backend_latency_bucket[5m])
+              )
+            )
+
+        # Error rate: send_failed / (send_failed + sent). Per track.
+        # 1e-9 guard prevents divide-by-zero on cold-start.
+        - record: canary:exporter_error_rate:ratio5m
+          expr: |
+            sum by (canary_otel_io_track) (
+              rate(otelcol_exporter_send_failed_spans[5m])
+            )
+            /
+            (
+              sum by (canary_otel_io_track) (
+                rate(otelcol_exporter_sent_spans[5m])
+                + rate(otelcol_exporter_send_failed_spans[5m])
+              ) + 1e-9
+            )
+
+        # Enqueue-refusal rate: telltale of upstream client backpressure.
+        - record: canary:exporter_enqueue_failure_rate:ratio5m
+          expr: |
+            sum by (canary_otel_io_track) (
+              rate(otelcol_exporter_enqueue_failed_spans[5m])
+            )
+            /
+            (
+              sum by (canary_otel_io_track) (
+                rate(otelcol_receiver_accepted_spans[5m])
+              ) + 1e-9
+            )
+
+        # Queue depth as a fraction of capacity — >70% is the OTel-recommended
+        # "consider scaling" line.
+        - record: canary:exporter_queue_utilization:ratio
+          expr: |
+            avg by (canary_otel_io_track) (
+              otelcol_exporter_queue_size / otelcol_exporter_queue_capacity
+            )
+
+        # CPU utilization per track — normalized by the pod's cpu request so
+        # baseline and canary are directly comparable regardless of node type.
+        - record: canary:process_cpu_utilization:ratio5m
+          expr: |
+            sum by (canary_otel_io_track) (
+              rate(otelcol_process_cpu_seconds_total[5m])
+            )
+            /
+            count by (canary_otel_io_track) (
+              up{job="otel-collector"} == 1
+            )
+
+        # Memory pressure: RSS / limit. Above 0.85 → GC storm risk.
+        - record: canary:process_memory_utilization:ratio
+          expr: |
+            avg by (canary_otel_io_track) (
+              otelcol_process_memory_rss
+              / on(pod) group_left
+              kube_pod_container_resource_limits{resource="memory", container="otelcol"}
+            )
+
+        # Heap allocation rate: catches GC pressure regressions the atomic
+        # refactor could cause (extra allocations in the swap path).
+        - record: canary:process_heap_alloc_rate:bytes5m
+          expr: |
+            sum by (canary_otel_io_track) (
+              rate(otelcol_process_runtime_total_alloc_bytes_total[5m])
+            )
+
+        # -------------------------------------------------------------
+        # 2. Ratio series — canary / baseline for at-a-glance dashboards
+        # -------------------------------------------------------------
+
+        # Speedup ratio: baseline p99 / canary p99. Should be >= 1.7 per the
+        # load-test lower bound (see ../../lbloadtest_plan.md §1).
+        - record: canary:p99_speedup:ratio
+          expr: |
+            (
+              canary:loadbalancer_backend_latency_seconds:p99{canary_otel_io_track="control"}
+              /
+              canary:loadbalancer_backend_latency_seconds:p99{canary_otel_io_track="canary"}
+            )
+
+        # Error rate delta: canary / control. >1.5 is suspicious; >3 is a fail.
+        - record: canary:error_rate:delta
+          expr: |
+            (
+              canary:exporter_error_rate:ratio5m{canary_otel_io_track="canary"}
+              /
+              (canary:exporter_error_rate:ratio5m{canary_otel_io_track="control"} + 1e-9)
+            )
+
+    # -------------------------------------------------------------------
+    # 3. Alerts — anchored to load-test-derived thresholds.
+    #    ROUTES: `severity=page` fires PagerDuty; `severity=slack` posts to
+    #    #otel-canary-alerts, which the Slack bot reads to auto-suggest
+    #    `/otel-canary-rollback` (see slack/rollback_bot.py).
+    # -------------------------------------------------------------------
+    - name: otel-canary.alerts
+      rules:
+
+        # FAIL-STOP: p99 latency regressed (atomic slower than RWMutex).
+        # This is the primary invalidation of the SOP §2.2 hypothesis.
+        - alert: CanaryP99LatencyRegression
+          expr: |
+            canary:loadbalancer_backend_latency_seconds:p99{canary_otel_io_track="canary"}
+            >
+            1.2 * canary:loadbalancer_backend_latency_seconds:p99{canary_otel_io_track="control"}
+          for: 5m
+          labels:
+            severity: page
+            component: otel-collector
+            action: auto_rollback
+          annotations:
+            summary: "Canary p99 is >20% worse than control ({{ $value | humanizeDuration }} vs baseline)"
+            description: |
+              The atomic.Pointer refactor is producing HIGHER tail latency than the
+              sync.RWMutex baseline. This directly contradicts the load-test lower
+              bound (see lbloadtest_plan.md §5). Automatic rollback recommended.
+              Run: /otel-canary-rollback reason=p99-regression
+            runbook_url: "https://runbooks.example.com/otel-canary/p99-regression"
+
+        # FAIL-STOP: error rate elevated on canary.
+        - alert: CanaryErrorRateElevated
+          expr: |
+            canary:exporter_error_rate:ratio5m{canary_otel_io_track="canary"} > 0.01
+            and
+            canary:error_rate:delta > 3
+          for: 5m
+          labels:
+            severity: page
+            component: otel-collector
+            action: auto_rollback
+          annotations:
+            summary: "Canary error rate {{ $value | humanizePercentage }} — >3× baseline"
+            description: |
+              Canary is failing >1% of exports AND is >3× worse than control.
+              Rollback: /otel-canary-rollback reason=error-rate
+
+        # WARN: queue growing on canary — early sign of backend saturation.
+        - alert: CanaryQueueUtilizationHigh
+          expr: canary:exporter_queue_utilization:ratio{canary_otel_io_track="canary"} > 0.7
+          for: 10m
+          labels:
+            severity: slack
+            component: otel-collector
+          annotations:
+            summary: "Canary queue {{ $value | humanizePercentage }} utilized"
+            description: |
+              Sustained queue >70% capacity per OTel scaling guidance.
+              Check `otelcol_exporter_enqueue_failed_spans` — if nonzero, rollback.
+
+        # WARN: CPU 25% higher on canary. Atomic refactor should reduce CPU,
+        # not increase it. Higher CPU means an unrelated regression slipped in.
+        - alert: CanaryCPUElevated
+          expr: |
+            canary:process_cpu_utilization:ratio5m{canary_otel_io_track="canary"}
+            >
+            1.25 * canary:process_cpu_utilization:ratio5m{canary_otel_io_track="control"}
+          for: 15m
+          labels:
+            severity: slack
+            component: otel-collector
+          annotations:
+            summary: "Canary CPU {{ $value }}s/s — >25% above control"
+
+        # WARN: memory RSS drift. Atomic.Pointer[T] holds an extra heap object
+        # per snapshot; 10% drift is normal, >30% suggests a leak.
+        - alert: CanaryMemoryElevated
+          expr: |
+            canary:process_memory_utilization:ratio{canary_otel_io_track="canary"}
+            >
+            1.30 * canary:process_memory_utilization:ratio{canary_otel_io_track="control"}
+          for: 15m
+          labels:
+            severity: slack
+            component: otel-collector
+          annotations:
+            summary: "Canary memory RSS >30% above control"
+
+        # WARN: GC pressure — heap alloc rate spike is a leak/churn indicator.
+        - alert: CanaryGCPressureElevated
+          expr: |
+            canary:process_heap_alloc_rate:bytes5m{canary_otel_io_track="canary"}
+            >
+            1.50 * canary:process_heap_alloc_rate:bytes5m{canary_otel_io_track="control"}
+          for: 15m
+          labels:
+            severity: slack
+            component: otel-collector
+          annotations:
+            summary: "Canary heap allocation rate 50% above control"
+
+        # INFO: speedup NOT observed. Not a failure — could just mean workload
+        # isn't lock-dominated in production. But surface it because it's the
+        # whole point of the rollout.
+        - alert: CanarySpeedupBelowLowerBound
+          expr: canary:p99_speedup:ratio < 1.4
+          for: 30m
+          labels:
+            severity: slack
+            component: otel-collector
+          annotations:
+            summary: "Canary speedup {{ $value }}× — below 1.7× load-test lower bound"
+            description: |
+              After 30m of steady-state traffic, the atomic refactor is showing
+              <1.4× p99 improvement over baseline. Not a defect, but worth
+              investigating whether prod workload is lock-dominated.

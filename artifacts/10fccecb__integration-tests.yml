@@ -1,0 +1,230 @@
+name: OTLP Metrics Pipeline — Integration Tests
+
+# Runs the TestTelemetry integration test (and the rest of the suite) on
+# every pull request across the supported Go versions, with and without the
+# race detector, and posts a single sticky comment on the PR summarizing the
+# results. The intent is to catch any regression in the OTLP protobuf schema
+# or attribute-set handling before it can be merged to `main`.
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Only one run per PR/branch — new pushes cancel superseded runs so the
+# sticky comment always reflects the tip of the branch.
+concurrency:
+  group: integration-tests-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege token. The summary job needs pull-requests:write to post
+# the sticky comment; everything else is read-only.
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Matrix: build + test on every supported Go version.
+  # 1.23 and 1.24 are required (the OpenTelemetry Collector modules require
+  # go >= 1.23.0). 1.22 runs as an early-warning lane and is allowed to fail.
+  # ---------------------------------------------------------------------------
+  test:
+    name: test (go ${{ matrix.go }} / ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        go: ["1.23.x", "1.24.x"]
+        include:
+          - os: ubuntu-latest
+            go: "1.22.x"
+            experimental: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go ${{ matrix.go }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          check-latest: true
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Print Go environment
+        run: |
+          go version
+          go env GOVERSION GOOS GOARCH GOMODCACHE GOCACHE
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Verify go.mod is tidy
+        # Fails fast if a contributor forgot to run `go mod tidy`.
+        run: |
+          go mod tidy
+          if ! git diff --quiet -- go.mod go.sum; then
+            echo "::error title=go.mod not tidy::Run 'go mod tidy' and commit the result."
+            git diff -- go.mod go.sum
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Install gotestsum
+        # gotestsum produces JUnit XML for the PR comment and a nicer
+        # human-readable log for the step summary.
+        run: go install gotest.tools/gotestsum@v1.12.0
+
+      - name: Prepare report directory
+        id: reports
+        run: |
+          mkdir -p reports
+          # Slugify the Go version for filenames: "1.23.x" -> "1_23_x"
+          slug="${{ matrix.go }}"
+          slug="${slug//./_}"
+          echo "slug=${slug}" >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------------
+      # Step 1 of 2: plain `go test` — fast lane. This is the primary signal.
+      # ---------------------------------------------------------------------
+      - name: Run TestTelemetry and full suite
+        id: unit
+        run: |
+          set -o pipefail
+          gotestsum \
+            --format testname \
+            --junitfile "reports/junit-${{ steps.reports.outputs.slug }}.xml" \
+            --jsonfile  "reports/gotest-${{ steps.reports.outputs.slug }}.json" \
+            -- \
+            -count=1 -shuffle=on -timeout=5m -covermode=atomic \
+            -coverprofile="reports/cover-${{ steps.reports.outputs.slug }}.out" \
+            ./...
+
+      # ---------------------------------------------------------------------
+      # Step 2 of 2: race detector. Kept separate so a race-only failure is
+      # attributable and doesn't get lost in the primary suite's output.
+      # Runs even if step 1 failed, so contributors see both signals at once.
+      # ---------------------------------------------------------------------
+      - name: Run tests with -race
+        id: race
+        if: always() && steps.unit.conclusion != 'cancelled'
+        run: |
+          set -o pipefail
+          gotestsum \
+            --format testname \
+            --junitfile "reports/junit-race-${{ steps.reports.outputs.slug }}.xml" \
+            -- \
+            -race -count=1 -timeout=10m ./...
+
+      - name: Write per-job summary
+        if: always()
+        run: |
+          {
+            echo "## Go ${{ matrix.go }} — ${{ matrix.os }}"
+            echo ""
+            echo "| Step | Result |"
+            echo "|------|--------|"
+            echo "| go vet | ✅ |"
+            echo "| TestTelemetry + suite | ${{ steps.unit.outcome == 'success' && '✅ pass' || '❌ fail' }} |"
+            echo "| \`-race\` suite | ${{ steps.race.outcome == 'success' && '✅ pass' || (steps.race.outcome == 'skipped' && '⏭️ skipped' || '❌ fail') }} |"
+            echo ""
+            if [ -f "reports/cover-${{ steps.reports.outputs.slug }}.out" ]; then
+              pct=$(go tool cover -func="reports/cover-${{ steps.reports.outputs.slug }}.out" | awk '/^total:/ {print $3}')
+              echo "**Coverage:** ${pct}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ steps.reports.outputs.slug }}
+          path: reports/
+          retention-days: 14
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # Aggregate every matrix leg's JUnit XML into a single sticky PR comment.
+  # Skipped on push events (there's no PR to comment on) and on forks (the
+  # GITHUB_TOKEN of a forked-PR run cannot write comments — sticky-comment
+  # handles that gracefully but we short-circuit anyway).
+  # ---------------------------------------------------------------------------
+  pr-summary:
+    name: PR summary comment
+    needs: test
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all test reports
+        uses: actions/download-artifact@v4
+        with:
+          path: all-reports
+          pattern: test-reports-*
+          merge-multiple: false
+
+      - name: Build comment body
+        id: body
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/workflows/scripts/summarize_junit.py \
+            --input-dir all-reports \
+            --repo "${{ github.repository }}" \
+            --run-id "${{ github.run_id }}" \
+            --sha "${{ github.event.pull_request.head.sha }}" \
+            --output comment.md
+          {
+            echo 'body<<PPLXEOF'
+            cat comment.md
+            echo 'PPLXEOF'
+          } >> "$GITHUB_OUTPUT"
+          # Also expose in the workflow run's own summary tab.
+          cat comment.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post or update sticky PR comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: otlp-integration-tests
+          message: ${{ steps.body.outputs.body }}
+          # Recreate the comment if it was deleted/hidden so users always
+          # see fresh state at the bottom of the PR.
+          recreate: true
+
+  # ---------------------------------------------------------------------------
+  # Single required check for branch protection. Point your rule at this job
+  # name — "Required Checks / all green" — instead of the matrix leg names,
+  # so adding a new Go version doesn't require touching branch protection.
+  # ---------------------------------------------------------------------------
+  required:
+    name: Required Checks / all green
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assert required matrix jobs succeeded
+        env:
+          RESULT: ${{ needs.test.result }}
+        run: |
+          echo "Aggregate result of the 'test' matrix: ${RESULT}"
+          if [ "${RESULT}" != "success" ]; then
+            echo "::error::One or more required matrix jobs failed."
+            exit 1
+          fi

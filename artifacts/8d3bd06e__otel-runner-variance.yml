@@ -1,0 +1,117 @@
+# =============================================================================
+# OTel Runner Variance — Weekly Analysis
+# =============================================================================
+# Pulls the last 7 days of nightly scorecards from S3, computes per-runner
+# coefficient of variation, and flags disproportionately noisy self-hosted
+# runners for quarantine. Posts the report to Slack and opens an issue when
+# any runner is quarantined.
+# =============================================================================
+
+name: otel-runner-variance
+
+on:
+  schedule:
+    - cron: "0 12 * * 1"          # Mondays 12:00 UTC (Sunday-night data included)
+  workflow_dispatch:
+    inputs:
+      window_days:
+        description: "Days of scorecard history to analyze"
+        default: "7"
+      fail_on_quarantine:
+        description: "Exit non-zero if any runner is QUARANTINE"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+jobs:
+  analyze:
+    name: Analyze runner variance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Configure AWS for scorecard read
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.PERF_BASELINE_ROLE }}
+          aws-region: us-east-1
+
+      - name: Fetch scorecards from S3
+        run: |
+          mkdir -p scorecards
+          # Grab everything under nightly/ from the last 10 days to give the
+          # analyzer a full 7-day window even if a nightly slipped a day.
+          aws s3 sync \
+            s3://otel-perf-baselines/nightly/ scorecards/ \
+            --exclude "*" --include "scorecard-*.json"
+
+      - name: Run analyzer
+        id: analyze
+        run: |
+          set +e
+          python scripts/analyze_runner_variance.py \
+            --input-dir scorecards \
+            --window-days "${{ inputs.window_days || 7 }}" \
+            --config config/performance-budget.yaml \
+            --out-json reports/runner-variance/runner_variance.json \
+            --out-md   reports/runner-variance/runner_variance.md \
+            ${{ inputs.fail_on_quarantine == 'true' && '--fail-on-quarantine' || '' }}
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Publish report to step summary
+        if: always()
+        run: cat reports/runner-variance/runner_variance.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-variance-report
+          path: reports/runner-variance/
+          retention-days: 180
+
+      - name: Extract quarantine count
+        id: verdict
+        if: always()
+        run: |
+          q=$(python -c "import json; d=json.load(open('reports/runner-variance/runner_variance.json')); print(sum(1 for r in d['runners'] if r['verdict']=='QUARANTINE'))")
+          w=$(python -c "import json; d=json.load(open('reports/runner-variance/runner_variance.json')); print(sum(1 for r in d['runners'] if r['verdict']=='WATCH'))")
+          echo "quarantine=$q" >> "$GITHUB_OUTPUT"
+          echo "watch=$w"      >> "$GITHUB_OUTPUT"
+
+      - name: Open tracking issue on quarantine
+        if: steps.verdict.outputs.quarantine != '0'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "OTel perf runner quarantine — week of ${{ github.run_id }}"
+          content-filepath: reports/runner-variance/runner_variance.md
+          labels: infra, perf, runner-variance
+
+      - name: Slack notify
+        if: steps.verdict.outputs.quarantine != '0' || steps.verdict.outputs.watch != '0'
+        uses: slackapi/slack-github-action@v1
+        with:
+          channel-id: ${{ vars.SLACK_INFRA_CHANNEL }}
+          slack-message: >
+            :chart_with_upwards_trend: Weekly runner variance:
+            *${{ steps.verdict.outputs.quarantine }}* quarantine,
+            *${{ steps.verdict.outputs.watch }}* watch.
+            Full report: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Enforce quarantine exit code
+        if: inputs.fail_on_quarantine == 'true' && steps.analyze.outputs.exit != '0'
+        run: exit 1

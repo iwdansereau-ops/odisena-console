@@ -1,0 +1,291 @@
+name: DB Migration Preflight
+
+# Runs the two migration-readiness scripts on every PR that touches database
+# migration files (or the check scripts themselves). Fails the build if
+# either script exits non-zero, and posts a color-coded status report to
+# both the PR (as a sticky comment) and to Slack.
+#
+# Required repository secrets:
+#   RDS_HOST            RDS endpoint (mydb.xxxxx.us-east-1.rds.amazonaws.com)
+#   RDS_PORT            optional, defaults to 5432
+#   RDS_USER            DB user with read access to pg_stat_activity, pg_settings
+#   RDS_PASSWORD        password for the above user
+#   RDS_DB              database name
+#   SLACK_WEBHOOK_URL   Slack Incoming Webhook URL for the target channel
+#   NOTION_TOKEN        Notion internal-integration token (secret_...)
+#                       — the integration must be shared with the target DB.
+#   NOTION_DATABASE_ID  ID of the "DB Migration Preflight Runs" database.
+#                       — dashed or undashed both work.
+#
+# The default GITHUB_TOKEN is used for the PR comment; no extra secret needed.
+
+"on":
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - "db/migrations/**"
+      - "scripts/verify_rds_migration_config.sh"
+      - "scripts/preflight_session_hygiene.sh"
+      - "scripts/format_preflight_output.py"
+      - ".github/workflows/db-migration-preflight.yml"
+  workflow_dispatch: {}
+
+# Cancel superseded runs on the same PR — the latest push is what matters.
+concurrency:
+  group: db-migration-preflight-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege token: read the repo, write PR comments.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preflight:
+    name: RDS migration preflight
+    runs-on: ubuntu-latest
+    # Skip drafts to keep CI cheap; developers can request a run with the
+    # "ready_for_review" transition or workflow_dispatch.
+    if: github.event.pull_request.draft != true
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+          psql --version
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Prepare output directory
+        run: mkdir -p preflight-out
+
+      - name: Collect changed migration files
+        id: mig-files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # For pull_request runs, list files under db/migrations/** that
+          # differ between base and head. For workflow_dispatch runs, fall
+          # back to "whatever is at HEAD" so manual runs still log something
+          # useful into Notion.
+          if [ -n "${BASE_SHA:-}" ] && [ -n "${HEAD_SHA:-}" ]; then
+            git fetch --no-tags --depth=1 origin "$BASE_SHA" 2>/dev/null || true
+            git diff --name-only --diff-filter=AMR "$BASE_SHA" "$HEAD_SHA" -- 'db/migrations/**' \
+              > preflight-out/migration-files.txt || true
+          else
+            git ls-files 'db/migrations/**' > preflight-out/migration-files.txt || true
+          fi
+          COUNT=$(wc -l < preflight-out/migration-files.txt | tr -d ' ')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Migration files touched by this PR: $COUNT"
+          cat preflight-out/migration-files.txt || true
+
+      - name: Record start time
+        id: timer
+        run: echo "start=$(date +%s)" >> "$GITHUB_OUTPUT"
+
+      - name: Run config verifier
+        id: config
+        env:
+          PGPASSWORD: ${{ secrets.RDS_PASSWORD }}
+        run: |
+          set +e
+          chmod +x scripts/verify_rds_migration_config.sh
+          # -e / --return makes script(1) exit with the child's exit code.
+          # -f flushes on every write so the output is captured on failure too.
+          # Wrapping in a pseudo-tty via script(1) preserves the ANSI colors
+          # that the check script emits; the formatter strips them for
+          # Markdown/Slack rendering.
+          script -qefc "scripts/verify_rds_migration_config.sh \
+              --host '${{ secrets.RDS_HOST }}' \
+              --port '${{ secrets.RDS_PORT || '5432' }}' \
+              --user '${{ secrets.RDS_USER }}' \
+              --db   '${{ secrets.RDS_DB }}'" \
+              preflight-out/config.raw
+          CONFIG_EXIT=$?
+          echo "exit=$CONFIG_EXIT" >> "$GITHUB_OUTPUT"
+          # Also emit an ANSI-stripped version to the job log for quick reading.
+          sed 's/\x1B\[[0-9;]*[a-zA-Z]//g' preflight-out/config.raw
+          exit 0
+
+      - name: Run session hygiene check
+        id: hygiene
+        env:
+          PGPASSWORD: ${{ secrets.RDS_PASSWORD }}
+        run: |
+          set +e
+          chmod +x scripts/preflight_session_hygiene.sh
+          script -qefc "scripts/preflight_session_hygiene.sh \
+              --host '${{ secrets.RDS_HOST }}' \
+              --port '${{ secrets.RDS_PORT || '5432' }}' \
+              --user '${{ secrets.RDS_USER }}' \
+              --db   '${{ secrets.RDS_DB }}'" \
+              preflight-out/hygiene.raw
+          HYGIENE_EXIT=$?
+          echo "exit=$HYGIENE_EXIT" >> "$GITHUB_OUTPUT"
+          sed 's/\x1B\[[0-9;]*[a-zA-Z]//g' preflight-out/hygiene.raw
+          exit 0
+
+      - name: Format outputs for PR and Slack
+        id: fmt
+        env:
+          PR_URL:     ${{ github.event.pull_request.html_url }}
+          PR_TITLE:   ${{ github.event.pull_request.title }}
+          REPO:       ${{ github.repository }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL:    ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CONFIG_EXIT:  ${{ steps.config.outputs.exit }}
+          HYGIENE_EXIT: ${{ steps.hygiene.outputs.exit }}
+        run: |
+          set -euo pipefail
+          python3 scripts/format_preflight_output.py \
+            --format markdown \
+            --config-output preflight-out/config.raw \
+            --hygiene-output preflight-out/hygiene.raw \
+            --config-exit  "$CONFIG_EXIT" \
+            --hygiene-exit "$HYGIENE_EXIT" \
+            --pr-url       "$PR_URL" \
+            --pr-title     "$PR_TITLE" \
+            --repo         "$REPO" \
+            --commit-sha   "$COMMIT_SHA" \
+            --run-url      "$RUN_URL" \
+            > preflight-out/pr-comment.md
+
+          python3 scripts/format_preflight_output.py \
+            --format slack \
+            --config-output preflight-out/config.raw \
+            --hygiene-output preflight-out/hygiene.raw \
+            --config-exit  "$CONFIG_EXIT" \
+            --hygiene-exit "$HYGIENE_EXIT" \
+            --pr-url       "$PR_URL" \
+            --pr-title     "$PR_TITLE" \
+            --repo         "$REPO" \
+            --commit-sha   "$COMMIT_SHA" \
+            --run-url      "$RUN_URL" \
+            > preflight-out/slack-payload.json
+
+          # Overall exit code for downstream steps.
+          if [ "$CONFIG_EXIT" = "0" ] && [ "$HYGIENE_EXIT" = "0" ]; then
+            echo "overall=0" >> "$GITHUB_OUTPUT"
+            echo "overall_status=PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "overall=1" >> "$GITHUB_OUTPUT"
+            echo "overall_status=BLOCKED" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Per-script status labels for the Notion tracker.
+          if [ "$CONFIG_EXIT" = "0" ]; then
+            echo "config_status=PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "config_status=FAIL" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$HYGIENE_EXIT" = "0" ]; then
+            echo "hygiene_status=PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "hygiene_status=FAIL" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Find existing preflight comment
+        id: find-comment
+        if: github.event.pull_request.number != ''
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: "github-actions[bot]"
+          body-includes: "<!-- migration-preflight-marker -->"
+
+      - name: Post or update PR comment
+        if: github.event.pull_request.number != ''
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: preflight-out/pr-comment.md
+          edit-mode: replace
+
+      - name: Post to Slack
+        if: always() && env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            -X POST -H 'Content-Type: application/json' \
+            --data @preflight-out/slack-payload.json \
+            "$SLACK_WEBHOOK_URL"
+
+      - name: Log run to Notion tracker
+        # Telemetry only — never fails the build, even on Notion outages.
+        # The helper swallows API errors and continue-on-error catches the rest.
+        #
+        # All `github.event.pull_request.*` values are routed through env vars
+        # rather than interpolated into the shell command — PR titles/branches
+        # are attacker-controlled and can inject shell if inlined.
+        if: always()
+        continue-on-error: true
+        env:
+          NOTION_TOKEN:       ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          TIMER_START:        ${{ steps.timer.outputs.start }}
+          REPO:               ${{ github.repository }}
+          PR_NUMBER:          ${{ github.event.pull_request.number }}
+          PR_TITLE:           ${{ github.event.pull_request.title }}
+          PR_URL:             ${{ github.event.pull_request.html_url }}
+          PR_BRANCH:          ${{ github.event.pull_request.head.ref || github.ref_name }}
+          PR_HEAD_SHA:        ${{ github.event.pull_request.head.sha || github.sha }}
+          CONFIG_EXIT:        ${{ steps.config.outputs.exit }}
+          HYGIENE_EXIT:       ${{ steps.hygiene.outputs.exit }}
+          CONFIG_STATUS:      ${{ steps.fmt.outputs.config_status }}
+          HYGIENE_STATUS:     ${{ steps.fmt.outputs.hygiene_status }}
+          OVERALL_STATUS:     ${{ steps.fmt.outputs.overall_status }}
+          ACTOR:              ${{ github.actor }}
+          EVENT_NAME:         ${{ github.event_name }}
+          RUN_URL:            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID:             ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          END_TS=$(date +%s)
+          EXEC_SECONDS=$(( END_TS - ${TIMER_START:-$END_TS} ))
+          python3 scripts/log_preflight_to_notion.py \
+            --repo           "$REPO" \
+            --pr-number      "$PR_NUMBER" \
+            --pr-title       "$PR_TITLE" \
+            --pr-url         "$PR_URL" \
+            --branch         "$PR_BRANCH" \
+            --commit-sha     "$PR_HEAD_SHA" \
+            --config-exit    "$CONFIG_EXIT" \
+            --hygiene-exit   "$HYGIENE_EXIT" \
+            --config-status  "$CONFIG_STATUS" \
+            --hygiene-status "$HYGIENE_STATUS" \
+            --overall-status "$OVERALL_STATUS" \
+            --exec-seconds   "$EXEC_SECONDS" \
+            --actor          "$ACTOR" \
+            --event          "$EVENT_NAME" \
+            --run-url        "$RUN_URL" \
+            --run-id         "$RUN_ID" \
+            --migration-files preflight-out/migration-files.txt
+
+      - name: Upload raw preflight outputs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preflight-output
+          path: preflight-out/
+          retention-days: 14
+
+      - name: Fail build if preflight did not pass
+        if: steps.fmt.outputs.overall != '0'
+        run: |
+          echo "::error title=Migration preflight failed::One or more preflight checks failed. See the PR comment for details."
+          echo "  config_verifier exit: ${{ steps.config.outputs.exit }}"
+          echo "  session_hygiene exit: ${{ steps.hygiene.outputs.exit }}"
+          exit 1

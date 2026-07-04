@@ -1,0 +1,2124 @@
+{
+  "categories": {
+    "otel": {
+      "name": "OpenTelemetry Collector",
+      "color": "#f59e0b",
+      "count": 113
+    },
+    "rds": {
+      "name": "PostgreSQL RDS Migration",
+      "color": "#3b82f6",
+      "count": 19
+    },
+    "iam": {
+      "name": "IAM & AWS Security",
+      "color": "#8b5cf6",
+      "count": 22
+    }
+  },
+  "sessions": [
+    {
+      "id": "ab22c7e1",
+      "title": "Aggregator Processor + Striped Mutex Refactor",
+      "category": "otel",
+      "files": [
+        "MUTEX_HOTSPOTS.md",
+        "MUTEX_MEMO.md",
+        "STRIPED_COMPARISON.md",
+        "aggregatorprocessor.zip",
+        "check_loadtest.py",
+        "loadtest.yml"
+      ]
+    },
+    {
+      "id": "7f33199a",
+      "title": "Benchmark Aggregation, Trend, PR Check",
+      "category": "otel",
+      "files": [
+        "8b701197-413f-44b2-8b5f-bc9f2930faab.png",
+        "aggregate_benchmarks.py",
+        "benchmark-data.yml",
+        "benchmark-pr-check.yml",
+        "benchmark-trend.yml",
+        "compare_benchmarks.py",
+        "flaky_benchmarks_report.py",
+        "median_benchmarks.py"
+      ]
+    },
+    {
+      "id": "b3255610",
+      "title": "CI Benchmark Noise Analysis",
+      "category": "otel",
+      "files": [
+        "Noisefloor--CI-Benchmark-Noise-Analysis.html"
+      ]
+    },
+    {
+      "id": "d0300874",
+      "title": "CI Benchmark Variance Analysis",
+      "category": "otel",
+      "files": [
+        "NoiseFloor---CI-Benchmark-Variance.html"
+      ]
+    },
+    {
+      "id": "f014b086",
+      "title": "CI Noise Floor Dashboard",
+      "category": "otel",
+      "files": [
+        "CI-Noise-Floor-Dashboard.html"
+      ]
+    },
+    {
+      "id": "d8892b20",
+      "title": "DDB IAM Refactor + Resource Auditor",
+      "category": "iam",
+      "files": [
+        "ddb_iam_refactor.zip",
+        "sample_findings.sarif.json",
+        "sample_report.md",
+        "sample_resource_report.md"
+      ]
+    },
+    {
+      "id": "5c03bccf",
+      "title": "DynamoDB IAM Refactor + SecReview",
+      "category": "iam",
+      "files": [
+        "ddb-iam-refactor.zip"
+      ]
+    },
+    {
+      "id": "6bdf0fb8",
+      "title": "Federated Role Audit + OIDC Alerting",
+      "category": "iam",
+      "files": [
+        "federated-role-audit.zip",
+        "github-oidc-alerting.zip",
+        "github-oidc-aws.zip",
+        "report.xlsx"
+      ]
+    },
+    {
+      "id": "7fe67527",
+      "title": "GHA OIDC + OTel Loadtest Probe",
+      "category": "iam",
+      "files": [
+        "README.md",
+        "gha-oidc-otel.zip",
+        "otel_loadtest.py",
+        "otel_probe.py"
+      ]
+    },
+    {
+      "id": "2bcca0c2",
+      "title": "GitHub Actions Benchmarks Workflow",
+      "category": "otel",
+      "files": [
+        "benchmarks.yaml"
+      ]
+    },
+    {
+      "id": "a204f753",
+      "title": "GitHub OIDC AWS Setup",
+      "category": "iam",
+      "files": [
+        "github-oidc-aws.zip"
+      ]
+    },
+    {
+      "id": "601156dd",
+      "title": "GitHub OIDC \u2192 AWS Multi-Account",
+      "category": "iam",
+      "files": [
+        "gh-oidc-multiacct.zip",
+        "github-oidc-aws.zip",
+        "implementation-guide.pdf"
+      ]
+    },
+    {
+      "id": "b436f3b4",
+      "title": "IAM Governance Bundle",
+      "category": "iam",
+      "files": [
+        "iam-governance.zip"
+      ]
+    },
+    {
+      "id": "8a98ba71",
+      "title": "IAM Role Auditor",
+      "category": "iam",
+      "files": [
+        "README.md",
+        "audit_iam_role.py",
+        "iam-auditor.zip"
+      ]
+    },
+    {
+      "id": "d08cb53c",
+      "title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "files": [
+        "7fe0c4d0-b11d-4da2-8510-346790ca14b8.svg",
+        "94b94e0b-ba0b-4771-880a-ea289051e0f0.png",
+        "caller.staging-memory-check.yml",
+        "collect-verdicts.sh",
+        "diff-verdicts.py",
+        "diff.json",
+        "diff_02_03.md",
+        "evaluate_leak.py",
+        "f2bfc0c7-1afb-409b-a539-9ab9793db778.png",
+        "fleet-dashboard.yml",
+        "fleet-scan.json",
+        "fleet-scan.md",
+        "gomem-dashboard.tar.gz",
+        "render-dashboard.py",
+        "require-branch-protection.sh",
+        "sample-fleet-dashboard.html",
+        "sample-fleet-dashboard.md",
+        "sample_churn_pr_comment.md",
+        "sample_leak_pr_comment.md",
+        "scan-fleet.sh",
+        "staging-memory-check-reusable.yml",
+        "staging-memory-check.yml"
+      ]
+    },
+    {
+      "id": "aaaa6b94",
+      "title": "Notion Migration Tracker + Playbook",
+      "category": "rds",
+      "files": [
+        "notion-migration-tracker-template.md",
+        "zero-downtime-migration-playbook.md"
+      ]
+    },
+    {
+      "id": "ed1797ab",
+      "title": "OTLP E2E Framework + Stress Sweep + pprof",
+      "category": "otel",
+      "files": [
+        "1f619e9d-9a49-402f-b3a6-911f15fef521.png",
+        "e354ccdc-0c5e-4141-9642-0051ce9da537.png",
+        "otel-collector-benchmark.md",
+        "otel-e2e-framework.zip",
+        "otel-e2e-workflow.yml",
+        "stress-sweep-sample-report.md"
+      ]
+    },
+    {
+      "id": "10fccecb",
+      "title": "OTLP Metrics Pipeline Integration Tests",
+      "category": "otel",
+      "files": [
+        "integration-tests.yml",
+        "pipeline_test.go",
+        "summarize_junit.py"
+      ]
+    },
+    {
+      "id": "6d2235a5",
+      "title": "OTLP/HTTP Trace Pipeline Test Harness",
+      "category": "otel",
+      "files": [
+        "otlp-http-testsuite.zip"
+      ]
+    },
+    {
+      "id": "b6bf7f58",
+      "title": "OTel Benchmark Storage & Regression Refactor",
+      "category": "otel",
+      "files": [
+        "README.md",
+        "check_regression.py",
+        "otel_benchmark_storage_analysis.md",
+        "regression_refactor.zip",
+        "test_check_regression.py"
+      ]
+    },
+    {
+      "id": "a1b31960",
+      "title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "files": [
+        "build_report.py",
+        "canary-recording-rules.yaml",
+        "cron_task_instructions.md",
+        "hourly_check.py",
+        "lb_bench_test.go",
+        "lbbench.tar.gz",
+        "lbbench_analysis.md",
+        "lbloadtest.tar.gz",
+        "lbloadtest_plan.md",
+        "loadtest.yml",
+        "otel_canary.tar.gz",
+        "otel_canary_playbook.md",
+        "otel_exporter_concurrency_comparison.md",
+        "otel_exporter_concurrency_sop.md",
+        "results.csv",
+        "rollback_bot.py",
+        "soak_config.json"
+      ]
+    },
+    {
+      "id": "c456c3e6",
+      "title": "OTel Custom Exporter Project Template",
+      "category": "otel",
+      "files": [
+        "README.md",
+        "build.yml",
+        "exporter_test.go",
+        "otelcol-custom-exporter.zip"
+      ]
+    },
+    {
+      "id": "410f7f6d",
+      "title": "OTel Exporter Integration Test Suite",
+      "category": "otel",
+      "files": [
+        "otelexporter-integration-test.zip"
+      ]
+    },
+    {
+      "id": "f253fc9f",
+      "title": "OTel GC Pressure Monitor & Weekly Health",
+      "category": "otel",
+      "files": [
+        "otelgc-cleanup.zip",
+        "otelgc-loadtest.zip",
+        "otelgc-weekly-health.zip",
+        "otelgc.zip"
+      ]
+    },
+    {
+      "id": "8cffcd17",
+      "title": "OTel Log Exporter + Binary Size CI",
+      "category": "otel",
+      "files": [
+        "README.md",
+        "benchmark.yml",
+        "ci.yml",
+        "compare_and_update.py",
+        "otelcol-logexporter.zip",
+        "run_benchmark.sh"
+      ]
+    },
+    {
+      "id": "64103b65",
+      "title": "OTel Perf Nightly + Drift + Scorecard",
+      "category": "otel",
+      "files": [
+        "DASHBOARD_SETUP.md",
+        "b0327e50-a9b6-458e-9e46-0a60827245a1.png",
+        "brief.md",
+        "c3206430-42fe-4753-ac94-0d42dc94d43c.png",
+        "index.html",
+        "otel-drift-analysis.zip",
+        "otel-perf-budget-scorecard.md",
+        "otel-perf-nightly-complete.md",
+        "trend_summary.csv"
+      ]
+    },
+    {
+      "id": "8d3bd06e",
+      "title": "OTel Runner Variance & Performance Budget",
+      "category": "otel",
+      "files": [
+        "README.md",
+        "analyze_runner_variance.py",
+        "environmental-factors.md",
+        "otel-nightly-perf.yml",
+        "otel-perf-budget.zip",
+        "otel-runner-variance.yml",
+        "performance-budget.yaml",
+        "runner-variance.md",
+        "runner_variance.md"
+      ]
+    },
+    {
+      "id": "c159afab",
+      "title": "OTel Tuner GitHub Action",
+      "category": "otel",
+      "files": [
+        "OTel-Exporter-Tuner.html",
+        "otel-tuner-action.zip"
+      ]
+    },
+    {
+      "id": "2b532ab6",
+      "title": "RDS Migration Runbook + Preflight + Notion",
+      "category": "rds",
+      "files": [
+        "analyze_preflight_history.py",
+        "dashboard_writer.py",
+        "db-migration-preflight-action.zip",
+        "db-migration-preflight.yml",
+        "format_preflight_output.py",
+        "log_preflight_to_notion.py",
+        "postgresql_rds_migration_tooling.md",
+        "preflight_session_hygiene.sh",
+        "rds_postgres_migration_runbook.md",
+        "verify_rds_migration_config.sh"
+      ]
+    },
+    {
+      "id": "531a968c",
+      "title": "Regression Gate Strategy",
+      "category": "otel",
+      "files": [
+        "CI-Noise-Floor-Dashboard.html",
+        "regression-gate-strategy.md"
+      ]
+    },
+    {
+      "id": "546e399c",
+      "title": "Reusable OTel Test Harnesses",
+      "category": "otel",
+      "files": [
+        "configharness.zip",
+        "otelharness.zip"
+      ]
+    },
+    {
+      "id": "4ba8c7a6",
+      "title": "Signal vs CI Noise Analysis",
+      "category": "otel",
+      "files": [
+        "Signal--CI-Noise-Analysis.zip"
+      ]
+    },
+    {
+      "id": "2e4274b3",
+      "title": "Stateful Aggregator Processor Scaffold",
+      "category": "otel",
+      "files": [
+        "statefulaggregatorprocessor.zip"
+      ]
+    },
+    {
+      "id": "9e429458",
+      "title": "Terraform AWS GitHub OIDC Module",
+      "category": "iam",
+      "files": [
+        "terraform-aws-github-oidc.zip"
+      ]
+    },
+    {
+      "id": "f17a94b5",
+      "title": "Zero-Downtime DDL Playbook + CI",
+      "category": "rds",
+      "files": [
+        "PULL_REQUEST.md",
+        "coverage_analysis.md",
+        "pr_ci_migration_tests.zip",
+        "rds_2tb_backfill_runbook.md",
+        "scheduled_regression.md",
+        "stress_test.md",
+        "zero_downtime_ddl_playbook.md"
+      ]
+    }
+  ],
+  "runbooks": [
+    {
+      "session": "64103b65",
+      "session_title": "OTel Perf Nightly + Drift + Scorecard",
+      "category": "otel",
+      "name": "brief.md",
+      "display_name": "Brief",
+      "size": 5173,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/64103b65__brief.md"
+    },
+    {
+      "session": "f17a94b5",
+      "session_title": "Zero-Downtime DDL Playbook + CI",
+      "category": "rds",
+      "name": "coverage_analysis.md",
+      "display_name": "Coverage Analysis",
+      "size": 7270,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/f17a94b5__coverage_analysis.md"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "cron_task_instructions.md",
+      "display_name": "Cron Task Instructions",
+      "size": 2625,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/a1b31960__cron_task_instructions.md"
+    },
+    {
+      "session": "64103b65",
+      "session_title": "OTel Perf Nightly + Drift + Scorecard",
+      "category": "otel",
+      "name": "DASHBOARD_SETUP.md",
+      "display_name": "Dashboard Setup",
+      "size": 7242,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/64103b65__DASHBOARD_SETUP.md"
+    },
+    {
+      "session": "8d3bd06e",
+      "session_title": "OTel Runner Variance & Performance Budget",
+      "category": "otel",
+      "name": "environmental-factors.md",
+      "display_name": "Environmental Factors",
+      "size": 4375,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/8d3bd06e__environmental-factors.md"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "lbbench_analysis.md",
+      "display_name": "Lbbench Analysis",
+      "size": 12334,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/a1b31960__lbbench_analysis.md"
+    },
+    {
+      "session": "ab22c7e1",
+      "session_title": "Aggregator Processor + Striped Mutex Refactor",
+      "category": "otel",
+      "name": "MUTEX_HOTSPOTS.md",
+      "display_name": "Mutex Hotspots",
+      "size": 6017,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/ab22c7e1__MUTEX_HOTSPOTS.md"
+    },
+    {
+      "session": "ab22c7e1",
+      "session_title": "Aggregator Processor + Striped Mutex Refactor",
+      "category": "otel",
+      "name": "MUTEX_MEMO.md",
+      "display_name": "Mutex Memo",
+      "size": 6279,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/ab22c7e1__MUTEX_MEMO.md"
+    },
+    {
+      "session": "aaaa6b94",
+      "session_title": "Notion Migration Tracker + Playbook",
+      "category": "rds",
+      "name": "notion-migration-tracker-template.md",
+      "display_name": "Notion Migration Tracker Template",
+      "size": 6060,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/aaaa6b94__notion-migration-tracker-template.md"
+    },
+    {
+      "session": "b6bf7f58",
+      "session_title": "OTel Benchmark Storage & Regression Refactor",
+      "category": "otel",
+      "name": "otel_benchmark_storage_analysis.md",
+      "display_name": "Otel Benchmark Storage Analysis",
+      "size": 13741,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/b6bf7f58__otel_benchmark_storage_analysis.md"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "otel_canary_playbook.md",
+      "display_name": "Otel Canary Playbook",
+      "size": 18304,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/a1b31960__otel_canary_playbook.md"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "otel_exporter_concurrency_comparison.md",
+      "display_name": "Otel Exporter Concurrency Comparison",
+      "size": 15776,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/a1b31960__otel_exporter_concurrency_comparison.md"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "otel_exporter_concurrency_sop.md",
+      "display_name": "Otel Exporter Concurrency Sop",
+      "size": 29540,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/a1b31960__otel_exporter_concurrency_sop.md"
+    },
+    {
+      "session": "64103b65",
+      "session_title": "OTel Perf Nightly + Drift + Scorecard",
+      "category": "otel",
+      "name": "otel-perf-budget-scorecard.md",
+      "display_name": "Otel Perf Budget Scorecard",
+      "size": 19328,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/64103b65__otel-perf-budget-scorecard.md"
+    },
+    {
+      "session": "2b532ab6",
+      "session_title": "RDS Migration Runbook + Preflight + Notion",
+      "category": "rds",
+      "name": "postgresql_rds_migration_tooling.md",
+      "display_name": "Postgresql Rds Migration Tooling",
+      "size": 20991,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/2b532ab6__postgresql_rds_migration_tooling.md"
+    },
+    {
+      "session": "f17a94b5",
+      "session_title": "Zero-Downtime DDL Playbook + CI",
+      "category": "rds",
+      "name": "rds_2tb_backfill_runbook.md",
+      "display_name": "Rds 2Tb Backfill Runbook",
+      "size": 12882,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/f17a94b5__rds_2tb_backfill_runbook.md"
+    },
+    {
+      "session": "2b532ab6",
+      "session_title": "RDS Migration Runbook + Preflight + Notion",
+      "category": "rds",
+      "name": "rds_postgres_migration_runbook.md",
+      "display_name": "Rds Postgres Migration Runbook",
+      "size": 24976,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/2b532ab6__rds_postgres_migration_runbook.md"
+    },
+    {
+      "session": "531a968c",
+      "session_title": "Regression Gate Strategy",
+      "category": "otel",
+      "name": "regression-gate-strategy.md",
+      "display_name": "Regression Gate Strategy",
+      "size": 22239,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/531a968c__regression-gate-strategy.md"
+    },
+    {
+      "session": "8d3bd06e",
+      "session_title": "OTel Runner Variance & Performance Budget",
+      "category": "otel",
+      "name": "runner-variance.md",
+      "display_name": "Runner Variance",
+      "size": 7058,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/8d3bd06e__runner-variance.md"
+    },
+    {
+      "session": "8d3bd06e",
+      "session_title": "OTel Runner Variance & Performance Budget",
+      "category": "otel",
+      "name": "runner_variance.md",
+      "display_name": "Runner Variance",
+      "size": 2698,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/8d3bd06e__runner_variance.md"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "sample-fleet-dashboard.md",
+      "display_name": "Sample Fleet Dashboard",
+      "size": 2441,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/d08cb53c__sample-fleet-dashboard.md"
+    },
+    {
+      "session": "d8892b20",
+      "session_title": "DDB IAM Refactor + Resource Auditor",
+      "category": "iam",
+      "name": "sample_report.md",
+      "display_name": "Sample Report",
+      "size": 33476,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/d8892b20__sample_report.md"
+    },
+    {
+      "session": "d8892b20",
+      "session_title": "DDB IAM Refactor + Resource Auditor",
+      "category": "iam",
+      "name": "sample_resource_report.md",
+      "display_name": "Sample Resource Report",
+      "size": 2941,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/d8892b20__sample_resource_report.md"
+    },
+    {
+      "session": "f17a94b5",
+      "session_title": "Zero-Downtime DDL Playbook + CI",
+      "category": "rds",
+      "name": "scheduled_regression.md",
+      "display_name": "Scheduled Regression",
+      "size": 7206,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/f17a94b5__scheduled_regression.md"
+    },
+    {
+      "session": "ed1797ab",
+      "session_title": "OTLP E2E Framework + Stress Sweep + pprof",
+      "category": "otel",
+      "name": "stress-sweep-sample-report.md",
+      "display_name": "Stress Sweep Sample Report",
+      "size": 4501,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/ed1797ab__stress-sweep-sample-report.md"
+    },
+    {
+      "session": "f17a94b5",
+      "session_title": "Zero-Downtime DDL Playbook + CI",
+      "category": "rds",
+      "name": "stress_test.md",
+      "display_name": "Stress Test",
+      "size": 12498,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/f17a94b5__stress_test.md"
+    },
+    {
+      "session": "ab22c7e1",
+      "session_title": "Aggregator Processor + Striped Mutex Refactor",
+      "category": "otel",
+      "name": "STRIPED_COMPARISON.md",
+      "display_name": "Striped Comparison",
+      "size": 9593,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/ab22c7e1__STRIPED_COMPARISON.md"
+    },
+    {
+      "session": "f17a94b5",
+      "session_title": "Zero-Downtime DDL Playbook + CI",
+      "category": "rds",
+      "name": "zero_downtime_ddl_playbook.md",
+      "display_name": "Zero Downtime Ddl Playbook",
+      "size": 28961,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/f17a94b5__zero_downtime_ddl_playbook.md"
+    },
+    {
+      "session": "aaaa6b94",
+      "session_title": "Notion Migration Tracker + Playbook",
+      "category": "rds",
+      "name": "zero-downtime-migration-playbook.md",
+      "display_name": "Zero Downtime Migration Playbook",
+      "size": 17722,
+      "ext": "md",
+      "type": "runbook",
+      "path": "runbooks/aaaa6b94__zero-downtime-migration-playbook.md"
+    }
+  ],
+  "artifacts": [
+    {
+      "session": "7f33199a",
+      "session_title": "Benchmark Aggregation, Trend, PR Check",
+      "category": "otel",
+      "name": "aggregate_benchmarks.py",
+      "display_name": "Aggregate Benchmarks",
+      "size": 10535,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/7f33199a__aggregate_benchmarks.py"
+    },
+    {
+      "session": "ab22c7e1",
+      "session_title": "Aggregator Processor + Striped Mutex Refactor",
+      "category": "otel",
+      "name": "aggregatorprocessor.zip",
+      "display_name": "Aggregatorprocessor",
+      "size": 42778,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/ab22c7e1__aggregatorprocessor.zip"
+    },
+    {
+      "session": "2b532ab6",
+      "session_title": "RDS Migration Runbook + Preflight + Notion",
+      "category": "rds",
+      "name": "analyze_preflight_history.py",
+      "display_name": "Analyze Preflight History",
+      "size": 24939,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/2b532ab6__analyze_preflight_history.py"
+    },
+    {
+      "session": "8d3bd06e",
+      "session_title": "OTel Runner Variance & Performance Budget",
+      "category": "otel",
+      "name": "analyze_runner_variance.py",
+      "display_name": "Analyze Runner Variance",
+      "size": 21088,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/8d3bd06e__analyze_runner_variance.py"
+    },
+    {
+      "session": "8a98ba71",
+      "session_title": "IAM Role Auditor",
+      "category": "iam",
+      "name": "audit_iam_role.py",
+      "display_name": "Audit Iam Role",
+      "size": 7217,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/8a98ba71__audit_iam_role.py"
+    },
+    {
+      "session": "8cffcd17",
+      "session_title": "OTel Log Exporter + Binary Size CI",
+      "category": "otel",
+      "name": "benchmark.yml",
+      "display_name": "Benchmark",
+      "size": 7457,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/8cffcd17__benchmark.yml"
+    },
+    {
+      "session": "7f33199a",
+      "session_title": "Benchmark Aggregation, Trend, PR Check",
+      "category": "otel",
+      "name": "benchmark-data.yml",
+      "display_name": "Benchmark Data",
+      "size": 5356,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/7f33199a__benchmark-data.yml"
+    },
+    {
+      "session": "7f33199a",
+      "session_title": "Benchmark Aggregation, Trend, PR Check",
+      "category": "otel",
+      "name": "benchmark-pr-check.yml",
+      "display_name": "Benchmark Pr Check",
+      "size": 6475,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/7f33199a__benchmark-pr-check.yml"
+    },
+    {
+      "session": "7f33199a",
+      "session_title": "Benchmark Aggregation, Trend, PR Check",
+      "category": "otel",
+      "name": "benchmark-trend.yml",
+      "display_name": "Benchmark Trend",
+      "size": 2592,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/7f33199a__benchmark-trend.yml"
+    },
+    {
+      "session": "2bcca0c2",
+      "session_title": "GitHub Actions Benchmarks Workflow",
+      "category": "otel",
+      "name": "benchmarks.yaml",
+      "display_name": "Benchmarks",
+      "size": 12231,
+      "ext": "yaml",
+      "type": "artifact",
+      "path": "artifacts/2bcca0c2__benchmarks.yaml"
+    },
+    {
+      "session": "c456c3e6",
+      "session_title": "OTel Custom Exporter Project Template",
+      "category": "otel",
+      "name": "build.yml",
+      "display_name": "Build",
+      "size": 9198,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/c456c3e6__build.yml"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "build_report.py",
+      "display_name": "Build Report",
+      "size": 12281,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/a1b31960__build_report.py"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "caller.staging-memory-check.yml",
+      "display_name": "Caller.Staging Memory Check",
+      "size": 577,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__caller.staging-memory-check.yml"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "canary-recording-rules.yaml",
+      "display_name": "Canary Recording Rules",
+      "size": 10855,
+      "ext": "yaml",
+      "type": "artifact",
+      "path": "artifacts/a1b31960__canary-recording-rules.yaml"
+    },
+    {
+      "session": "ab22c7e1",
+      "session_title": "Aggregator Processor + Striped Mutex Refactor",
+      "category": "otel",
+      "name": "check_loadtest.py",
+      "display_name": "Check Loadtest",
+      "size": 8966,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/ab22c7e1__check_loadtest.py"
+    },
+    {
+      "session": "b6bf7f58",
+      "session_title": "OTel Benchmark Storage & Regression Refactor",
+      "category": "otel",
+      "name": "check_regression.py",
+      "display_name": "Check Regression",
+      "size": 18042,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/b6bf7f58__check_regression.py"
+    },
+    {
+      "session": "8cffcd17",
+      "session_title": "OTel Log Exporter + Binary Size CI",
+      "category": "otel",
+      "name": "ci.yml",
+      "display_name": "Ci",
+      "size": 20039,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/8cffcd17__ci.yml"
+    },
+    {
+      "session": "531a968c",
+      "session_title": "Regression Gate Strategy",
+      "category": "otel",
+      "name": "CI-Noise-Floor-Dashboard.html",
+      "display_name": "Ci Noise Floor Dashboard",
+      "size": 12450,
+      "ext": "html",
+      "type": "artifact",
+      "path": "artifacts/531a968c__CI-Noise-Floor-Dashboard.html"
+    },
+    {
+      "session": "f014b086",
+      "session_title": "CI Noise Floor Dashboard",
+      "category": "otel",
+      "name": "CI-Noise-Floor-Dashboard.html",
+      "display_name": "Ci Noise Floor Dashboard",
+      "size": 23014,
+      "ext": "html",
+      "type": "artifact",
+      "path": "artifacts/f014b086__CI-Noise-Floor-Dashboard.html"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "collect-verdicts.sh",
+      "display_name": "Collect Verdicts",
+      "size": 13173,
+      "ext": "sh",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__collect-verdicts.sh"
+    },
+    {
+      "session": "8cffcd17",
+      "session_title": "OTel Log Exporter + Binary Size CI",
+      "category": "otel",
+      "name": "compare_and_update.py",
+      "display_name": "Compare And Update",
+      "size": 6990,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/8cffcd17__compare_and_update.py"
+    },
+    {
+      "session": "7f33199a",
+      "session_title": "Benchmark Aggregation, Trend, PR Check",
+      "category": "otel",
+      "name": "compare_benchmarks.py",
+      "display_name": "Compare Benchmarks",
+      "size": 9546,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/7f33199a__compare_benchmarks.py"
+    },
+    {
+      "session": "546e399c",
+      "session_title": "Reusable OTel Test Harnesses",
+      "category": "otel",
+      "name": "configharness.zip",
+      "display_name": "Configharness",
+      "size": 54642,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/546e399c__configharness.zip"
+    },
+    {
+      "session": "2b532ab6",
+      "session_title": "RDS Migration Runbook + Preflight + Notion",
+      "category": "rds",
+      "name": "dashboard_writer.py",
+      "display_name": "Dashboard Writer",
+      "size": 21265,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/2b532ab6__dashboard_writer.py"
+    },
+    {
+      "session": "2b532ab6",
+      "session_title": "RDS Migration Runbook + Preflight + Notion",
+      "category": "rds",
+      "name": "db-migration-preflight.yml",
+      "display_name": "Db Migration Preflight",
+      "size": 12422,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/2b532ab6__db-migration-preflight.yml"
+    },
+    {
+      "session": "2b532ab6",
+      "session_title": "RDS Migration Runbook + Preflight + Notion",
+      "category": "rds",
+      "name": "db-migration-preflight-action.zip",
+      "display_name": "Db Migration Preflight Action",
+      "size": 30562,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/2b532ab6__db-migration-preflight-action.zip"
+    },
+    {
+      "session": "5c03bccf",
+      "session_title": "DynamoDB IAM Refactor + SecReview",
+      "category": "iam",
+      "name": "ddb-iam-refactor.zip",
+      "display_name": "Ddb Iam Refactor",
+      "size": 29143,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/5c03bccf__ddb-iam-refactor.zip"
+    },
+    {
+      "session": "d8892b20",
+      "session_title": "DDB IAM Refactor + Resource Auditor",
+      "category": "iam",
+      "name": "ddb_iam_refactor.zip",
+      "display_name": "Ddb Iam Refactor",
+      "size": 33520,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/d8892b20__ddb_iam_refactor.zip"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "diff.json",
+      "display_name": "Diff",
+      "size": 1404,
+      "ext": "json",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__diff.json"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "diff_02_03.md",
+      "display_name": "Diff 02 03",
+      "size": 2021,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__diff_02_03.md"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "diff-verdicts.py",
+      "display_name": "Diff Verdicts",
+      "size": 5893,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__diff-verdicts.py"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "evaluate_leak.py",
+      "display_name": "Evaluate Leak",
+      "size": 10080,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__evaluate_leak.py"
+    },
+    {
+      "session": "c456c3e6",
+      "session_title": "OTel Custom Exporter Project Template",
+      "category": "otel",
+      "name": "exporter_test.go",
+      "display_name": "Exporter Test",
+      "size": 12953,
+      "ext": "go",
+      "type": "artifact",
+      "path": "artifacts/c456c3e6__exporter_test.go"
+    },
+    {
+      "session": "6bdf0fb8",
+      "session_title": "Federated Role Audit + OIDC Alerting",
+      "category": "iam",
+      "name": "federated-role-audit.zip",
+      "display_name": "Federated Role Audit",
+      "size": 36720,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/6bdf0fb8__federated-role-audit.zip"
+    },
+    {
+      "session": "7f33199a",
+      "session_title": "Benchmark Aggregation, Trend, PR Check",
+      "category": "otel",
+      "name": "flaky_benchmarks_report.py",
+      "display_name": "Flaky Benchmarks Report",
+      "size": 9137,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/7f33199a__flaky_benchmarks_report.py"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "fleet-dashboard.yml",
+      "display_name": "Fleet Dashboard",
+      "size": 4644,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__fleet-dashboard.yml"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "fleet-scan.json",
+      "display_name": "Fleet Scan",
+      "size": 2615,
+      "ext": "json",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__fleet-scan.json"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "fleet-scan.md",
+      "display_name": "Fleet Scan",
+      "size": 796,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__fleet-scan.md"
+    },
+    {
+      "session": "2b532ab6",
+      "session_title": "RDS Migration Runbook + Preflight + Notion",
+      "category": "rds",
+      "name": "format_preflight_output.py",
+      "display_name": "Format Preflight Output",
+      "size": 7931,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/2b532ab6__format_preflight_output.py"
+    },
+    {
+      "session": "601156dd",
+      "session_title": "GitHub OIDC \u2192 AWS Multi-Account",
+      "category": "iam",
+      "name": "gh-oidc-multiacct.zip",
+      "display_name": "Gh Oidc Multiacct",
+      "size": 22427,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/601156dd__gh-oidc-multiacct.zip"
+    },
+    {
+      "session": "7fe67527",
+      "session_title": "GHA OIDC + OTel Loadtest Probe",
+      "category": "iam",
+      "name": "gha-oidc-otel.zip",
+      "display_name": "Gha Oidc Otel",
+      "size": 52436,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/7fe67527__gha-oidc-otel.zip"
+    },
+    {
+      "session": "6bdf0fb8",
+      "session_title": "Federated Role Audit + OIDC Alerting",
+      "category": "iam",
+      "name": "github-oidc-alerting.zip",
+      "display_name": "Github Oidc Alerting",
+      "size": 18922,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/6bdf0fb8__github-oidc-alerting.zip"
+    },
+    {
+      "session": "601156dd",
+      "session_title": "GitHub OIDC \u2192 AWS Multi-Account",
+      "category": "iam",
+      "name": "github-oidc-aws.zip",
+      "display_name": "Github Oidc Aws",
+      "size": 10194,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/601156dd__github-oidc-aws.zip"
+    },
+    {
+      "session": "6bdf0fb8",
+      "session_title": "Federated Role Audit + OIDC Alerting",
+      "category": "iam",
+      "name": "github-oidc-aws.zip",
+      "display_name": "Github Oidc Aws",
+      "size": 18262,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/6bdf0fb8__github-oidc-aws.zip"
+    },
+    {
+      "session": "a204f753",
+      "session_title": "GitHub OIDC AWS Setup",
+      "category": "iam",
+      "name": "github-oidc-aws.zip",
+      "display_name": "Github Oidc Aws",
+      "size": 13591,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/a204f753__github-oidc-aws.zip"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "gomem-dashboard.tar.gz",
+      "display_name": "Gomem Dashboard",
+      "size": 42177,
+      "ext": "gz",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__gomem-dashboard.tar.gz"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "hourly_check.py",
+      "display_name": "Hourly Check",
+      "size": 11174,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/a1b31960__hourly_check.py"
+    },
+    {
+      "session": "8a98ba71",
+      "session_title": "IAM Role Auditor",
+      "category": "iam",
+      "name": "iam-auditor.zip",
+      "display_name": "Iam Auditor",
+      "size": 18761,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/8a98ba71__iam-auditor.zip"
+    },
+    {
+      "session": "b436f3b4",
+      "session_title": "IAM Governance Bundle",
+      "category": "iam",
+      "name": "iam-governance.zip",
+      "display_name": "Iam Governance",
+      "size": 54258,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/b436f3b4__iam-governance.zip"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "7fe0c4d0-b11d-4da2-8510-346790ca14b8.svg",
+      "display_name": "Image asset",
+      "size": 2438,
+      "ext": "svg",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__7fe0c4d0-b11d-4da2-8510-346790ca14b8.svg"
+    },
+    {
+      "session": "601156dd",
+      "session_title": "GitHub OIDC \u2192 AWS Multi-Account",
+      "category": "iam",
+      "name": "implementation-guide.pdf",
+      "display_name": "Implementation Guide",
+      "size": 5045,
+      "ext": "pdf",
+      "type": "artifact",
+      "path": "artifacts/601156dd__implementation-guide.pdf"
+    },
+    {
+      "session": "64103b65",
+      "session_title": "OTel Perf Nightly + Drift + Scorecard",
+      "category": "otel",
+      "name": "index.html",
+      "display_name": "Index",
+      "size": 211464,
+      "ext": "html",
+      "type": "artifact",
+      "path": "artifacts/64103b65__index.html"
+    },
+    {
+      "session": "10fccecb",
+      "session_title": "OTLP Metrics Pipeline Integration Tests",
+      "category": "otel",
+      "name": "integration-tests.yml",
+      "display_name": "Integration Tests",
+      "size": 8556,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/10fccecb__integration-tests.yml"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "lb_bench_test.go",
+      "display_name": "Lb Bench Test",
+      "size": 12308,
+      "ext": "go",
+      "type": "artifact",
+      "path": "artifacts/a1b31960__lb_bench_test.go"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "lbbench.tar.gz",
+      "display_name": "Lbbench",
+      "size": 7634,
+      "ext": "gz",
+      "type": "artifact",
+      "path": "artifacts/a1b31960__lbbench.tar.gz"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "lbloadtest.tar.gz",
+      "display_name": "Lbloadtest",
+      "size": 13539,
+      "ext": "gz",
+      "type": "artifact",
+      "path": "artifacts/a1b31960__lbloadtest.tar.gz"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "lbloadtest_plan.md",
+      "display_name": "Lbloadtest Plan",
+      "size": 18558,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/a1b31960__lbloadtest_plan.md"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "loadtest.yml",
+      "display_name": "Loadtest",
+      "size": 6660,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/a1b31960__loadtest.yml"
+    },
+    {
+      "session": "ab22c7e1",
+      "session_title": "Aggregator Processor + Striped Mutex Refactor",
+      "category": "otel",
+      "name": "loadtest.yml",
+      "display_name": "Loadtest",
+      "size": 5033,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/ab22c7e1__loadtest.yml"
+    },
+    {
+      "session": "2b532ab6",
+      "session_title": "RDS Migration Runbook + Preflight + Notion",
+      "category": "rds",
+      "name": "log_preflight_to_notion.py",
+      "display_name": "Log Preflight To Notion",
+      "size": 8024,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/2b532ab6__log_preflight_to_notion.py"
+    },
+    {
+      "session": "7f33199a",
+      "session_title": "Benchmark Aggregation, Trend, PR Check",
+      "category": "otel",
+      "name": "median_benchmarks.py",
+      "display_name": "Median Benchmarks",
+      "size": 5753,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/7f33199a__median_benchmarks.py"
+    },
+    {
+      "session": "d0300874",
+      "session_title": "CI Benchmark Variance Analysis",
+      "category": "otel",
+      "name": "NoiseFloor---CI-Benchmark-Variance.html",
+      "display_name": "Noisefloor   Ci Benchmark Variance",
+      "size": 13967,
+      "ext": "html",
+      "type": "artifact",
+      "path": "artifacts/d0300874__NoiseFloor---CI-Benchmark-Variance.html"
+    },
+    {
+      "session": "b3255610",
+      "session_title": "CI Benchmark Noise Analysis",
+      "category": "otel",
+      "name": "Noisefloor--CI-Benchmark-Noise-Analysis.html",
+      "display_name": "Noisefloor  Ci Benchmark Noise Analysis",
+      "size": 28329,
+      "ext": "html",
+      "type": "artifact",
+      "path": "artifacts/b3255610__Noisefloor--CI-Benchmark-Noise-Analysis.html"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "otel_canary.tar.gz",
+      "display_name": "Otel Canary",
+      "size": 11588,
+      "ext": "gz",
+      "type": "artifact",
+      "path": "artifacts/a1b31960__otel_canary.tar.gz"
+    },
+    {
+      "session": "ed1797ab",
+      "session_title": "OTLP E2E Framework + Stress Sweep + pprof",
+      "category": "otel",
+      "name": "otel-collector-benchmark.md",
+      "display_name": "Otel Collector Benchmark",
+      "size": 10396,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/ed1797ab__otel-collector-benchmark.md"
+    },
+    {
+      "session": "64103b65",
+      "session_title": "OTel Perf Nightly + Drift + Scorecard",
+      "category": "otel",
+      "name": "otel-drift-analysis.zip",
+      "display_name": "Otel Drift Analysis",
+      "size": 427755,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/64103b65__otel-drift-analysis.zip"
+    },
+    {
+      "session": "ed1797ab",
+      "session_title": "OTLP E2E Framework + Stress Sweep + pprof",
+      "category": "otel",
+      "name": "otel-e2e-framework.zip",
+      "display_name": "Otel E2E Framework",
+      "size": 7521930,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/ed1797ab__otel-e2e-framework.zip"
+    },
+    {
+      "session": "ed1797ab",
+      "session_title": "OTLP E2E Framework + Stress Sweep + pprof",
+      "category": "otel",
+      "name": "otel-e2e-workflow.yml",
+      "display_name": "Otel E2E Workflow",
+      "size": 8818,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/ed1797ab__otel-e2e-workflow.yml"
+    },
+    {
+      "session": "c159afab",
+      "session_title": "OTel Tuner GitHub Action",
+      "category": "otel",
+      "name": "OTel-Exporter-Tuner.html",
+      "display_name": "Otel Exporter Tuner",
+      "size": 19057,
+      "ext": "html",
+      "type": "artifact",
+      "path": "artifacts/c159afab__OTel-Exporter-Tuner.html"
+    },
+    {
+      "session": "7fe67527",
+      "session_title": "GHA OIDC + OTel Loadtest Probe",
+      "category": "iam",
+      "name": "otel_loadtest.py",
+      "display_name": "Otel Loadtest",
+      "size": 43116,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/7fe67527__otel_loadtest.py"
+    },
+    {
+      "session": "8d3bd06e",
+      "session_title": "OTel Runner Variance & Performance Budget",
+      "category": "otel",
+      "name": "otel-nightly-perf.yml",
+      "display_name": "Otel Nightly Perf",
+      "size": 11090,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/8d3bd06e__otel-nightly-perf.yml"
+    },
+    {
+      "session": "8d3bd06e",
+      "session_title": "OTel Runner Variance & Performance Budget",
+      "category": "otel",
+      "name": "otel-perf-budget.zip",
+      "display_name": "Otel Perf Budget",
+      "size": 63998,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/8d3bd06e__otel-perf-budget.zip"
+    },
+    {
+      "session": "64103b65",
+      "session_title": "OTel Perf Nightly + Drift + Scorecard",
+      "category": "otel",
+      "name": "otel-perf-nightly-complete.md",
+      "display_name": "Otel Perf Nightly Complete",
+      "size": 41477,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/64103b65__otel-perf-nightly-complete.md"
+    },
+    {
+      "session": "7fe67527",
+      "session_title": "GHA OIDC + OTel Loadtest Probe",
+      "category": "iam",
+      "name": "otel_probe.py",
+      "display_name": "Otel Probe",
+      "size": 28076,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/7fe67527__otel_probe.py"
+    },
+    {
+      "session": "8d3bd06e",
+      "session_title": "OTel Runner Variance & Performance Budget",
+      "category": "otel",
+      "name": "otel-runner-variance.yml",
+      "display_name": "Otel Runner Variance",
+      "size": 4489,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/8d3bd06e__otel-runner-variance.yml"
+    },
+    {
+      "session": "c159afab",
+      "session_title": "OTel Tuner GitHub Action",
+      "category": "otel",
+      "name": "otel-tuner-action.zip",
+      "display_name": "Otel Tuner Action",
+      "size": 19891,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/c159afab__otel-tuner-action.zip"
+    },
+    {
+      "session": "c456c3e6",
+      "session_title": "OTel Custom Exporter Project Template",
+      "category": "otel",
+      "name": "otelcol-custom-exporter.zip",
+      "display_name": "Otelcol Custom Exporter",
+      "size": 16902,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/c456c3e6__otelcol-custom-exporter.zip"
+    },
+    {
+      "session": "8cffcd17",
+      "session_title": "OTel Log Exporter + Binary Size CI",
+      "category": "otel",
+      "name": "otelcol-logexporter.zip",
+      "display_name": "Otelcol Logexporter",
+      "size": 34326,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/8cffcd17__otelcol-logexporter.zip"
+    },
+    {
+      "session": "410f7f6d",
+      "session_title": "OTel Exporter Integration Test Suite",
+      "category": "otel",
+      "name": "otelexporter-integration-test.zip",
+      "display_name": "Otelexporter Integration Test",
+      "size": 32608,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/410f7f6d__otelexporter-integration-test.zip"
+    },
+    {
+      "session": "f253fc9f",
+      "session_title": "OTel GC Pressure Monitor & Weekly Health",
+      "category": "otel",
+      "name": "otelgc.zip",
+      "display_name": "Otelgc",
+      "size": 30583,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/f253fc9f__otelgc.zip"
+    },
+    {
+      "session": "f253fc9f",
+      "session_title": "OTel GC Pressure Monitor & Weekly Health",
+      "category": "otel",
+      "name": "otelgc-cleanup.zip",
+      "display_name": "Otelgc Cleanup",
+      "size": 17735,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/f253fc9f__otelgc-cleanup.zip"
+    },
+    {
+      "session": "f253fc9f",
+      "session_title": "OTel GC Pressure Monitor & Weekly Health",
+      "category": "otel",
+      "name": "otelgc-loadtest.zip",
+      "display_name": "Otelgc Loadtest",
+      "size": 30037,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/f253fc9f__otelgc-loadtest.zip"
+    },
+    {
+      "session": "f253fc9f",
+      "session_title": "OTel GC Pressure Monitor & Weekly Health",
+      "category": "otel",
+      "name": "otelgc-weekly-health.zip",
+      "display_name": "Otelgc Weekly Health",
+      "size": 13746,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/f253fc9f__otelgc-weekly-health.zip"
+    },
+    {
+      "session": "546e399c",
+      "session_title": "Reusable OTel Test Harnesses",
+      "category": "otel",
+      "name": "otelharness.zip",
+      "display_name": "Otelharness",
+      "size": 25987,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/546e399c__otelharness.zip"
+    },
+    {
+      "session": "6d2235a5",
+      "session_title": "OTLP/HTTP Trace Pipeline Test Harness",
+      "category": "otel",
+      "name": "otlp-http-testsuite.zip",
+      "display_name": "Otlp Http Testsuite",
+      "size": 47614,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/6d2235a5__otlp-http-testsuite.zip"
+    },
+    {
+      "session": "8d3bd06e",
+      "session_title": "OTel Runner Variance & Performance Budget",
+      "category": "otel",
+      "name": "performance-budget.yaml",
+      "display_name": "Performance Budget",
+      "size": 7980,
+      "ext": "yaml",
+      "type": "artifact",
+      "path": "artifacts/8d3bd06e__performance-budget.yaml"
+    },
+    {
+      "session": "10fccecb",
+      "session_title": "OTLP Metrics Pipeline Integration Tests",
+      "category": "otel",
+      "name": "pipeline_test.go",
+      "display_name": "Pipeline Test",
+      "size": 9876,
+      "ext": "go",
+      "type": "artifact",
+      "path": "artifacts/10fccecb__pipeline_test.go"
+    },
+    {
+      "session": "f17a94b5",
+      "session_title": "Zero-Downtime DDL Playbook + CI",
+      "category": "rds",
+      "name": "pr_ci_migration_tests.zip",
+      "display_name": "Pr Ci Migration Tests",
+      "size": 91741,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/f17a94b5__pr_ci_migration_tests.zip"
+    },
+    {
+      "session": "2b532ab6",
+      "session_title": "RDS Migration Runbook + Preflight + Notion",
+      "category": "rds",
+      "name": "preflight_session_hygiene.sh",
+      "display_name": "Preflight Session Hygiene",
+      "size": 20294,
+      "ext": "sh",
+      "type": "artifact",
+      "path": "artifacts/2b532ab6__preflight_session_hygiene.sh"
+    },
+    {
+      "session": "f17a94b5",
+      "session_title": "Zero-Downtime DDL Playbook + CI",
+      "category": "rds",
+      "name": "PULL_REQUEST.md",
+      "display_name": "Pull Request",
+      "size": 8799,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/f17a94b5__PULL_REQUEST.md"
+    },
+    {
+      "session": "7fe67527",
+      "session_title": "GHA OIDC + OTel Loadtest Probe",
+      "category": "iam",
+      "name": "README.md",
+      "display_name": "Readme",
+      "size": 4098,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/7fe67527__README.md"
+    },
+    {
+      "session": "8a98ba71",
+      "session_title": "IAM Role Auditor",
+      "category": "iam",
+      "name": "README.md",
+      "display_name": "Readme",
+      "size": 5725,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/8a98ba71__README.md"
+    },
+    {
+      "session": "8cffcd17",
+      "session_title": "OTel Log Exporter + Binary Size CI",
+      "category": "otel",
+      "name": "README.md",
+      "display_name": "Readme",
+      "size": 6342,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/8cffcd17__README.md"
+    },
+    {
+      "session": "8d3bd06e",
+      "session_title": "OTel Runner Variance & Performance Budget",
+      "category": "otel",
+      "name": "README.md",
+      "display_name": "Readme",
+      "size": 14603,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/8d3bd06e__README.md"
+    },
+    {
+      "session": "b6bf7f58",
+      "session_title": "OTel Benchmark Storage & Regression Refactor",
+      "category": "otel",
+      "name": "README.md",
+      "display_name": "Readme",
+      "size": 3194,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/b6bf7f58__README.md"
+    },
+    {
+      "session": "c456c3e6",
+      "session_title": "OTel Custom Exporter Project Template",
+      "category": "otel",
+      "name": "README.md",
+      "display_name": "Readme",
+      "size": 4985,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/c456c3e6__README.md"
+    },
+    {
+      "session": "b6bf7f58",
+      "session_title": "OTel Benchmark Storage & Regression Refactor",
+      "category": "otel",
+      "name": "regression_refactor.zip",
+      "display_name": "Regression Refactor",
+      "size": 14820,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/b6bf7f58__regression_refactor.zip"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "render-dashboard.py",
+      "display_name": "Render Dashboard",
+      "size": 15754,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__render-dashboard.py"
+    },
+    {
+      "session": "6bdf0fb8",
+      "session_title": "Federated Role Audit + OIDC Alerting",
+      "category": "iam",
+      "name": "report.xlsx",
+      "display_name": "Report",
+      "size": 18427,
+      "ext": "xlsx",
+      "type": "artifact",
+      "path": "artifacts/6bdf0fb8__report.xlsx"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "require-branch-protection.sh",
+      "display_name": "Require Branch Protection",
+      "size": 7905,
+      "ext": "sh",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__require-branch-protection.sh"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "results.csv",
+      "display_name": "Results",
+      "size": 470,
+      "ext": "csv",
+      "type": "artifact",
+      "path": "artifacts/a1b31960__results.csv"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "rollback_bot.py",
+      "display_name": "Rollback Bot",
+      "size": 11494,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/a1b31960__rollback_bot.py"
+    },
+    {
+      "session": "8cffcd17",
+      "session_title": "OTel Log Exporter + Binary Size CI",
+      "category": "otel",
+      "name": "run_benchmark.sh",
+      "display_name": "Run Benchmark",
+      "size": 12274,
+      "ext": "sh",
+      "type": "artifact",
+      "path": "artifacts/8cffcd17__run_benchmark.sh"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "sample_churn_pr_comment.md",
+      "display_name": "Sample Churn Pr Comment",
+      "size": 2734,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__sample_churn_pr_comment.md"
+    },
+    {
+      "session": "d8892b20",
+      "session_title": "DDB IAM Refactor + Resource Auditor",
+      "category": "iam",
+      "name": "sample_findings.sarif.json",
+      "display_name": "Sample Findings.Sarif",
+      "size": 8257,
+      "ext": "json",
+      "type": "artifact",
+      "path": "artifacts/d8892b20__sample_findings.sarif.json"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "sample-fleet-dashboard.html",
+      "display_name": "Sample Fleet Dashboard",
+      "size": 5840,
+      "ext": "html",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__sample-fleet-dashboard.html"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "sample_leak_pr_comment.md",
+      "display_name": "Sample Leak Pr Comment",
+      "size": 2580,
+      "ext": "md",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__sample_leak_pr_comment.md"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "scan-fleet.sh",
+      "display_name": "Scan Fleet",
+      "size": 12740,
+      "ext": "sh",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__scan-fleet.sh"
+    },
+    {
+      "session": "4ba8c7a6",
+      "session_title": "Signal vs CI Noise Analysis",
+      "category": "otel",
+      "name": "Signal--CI-Noise-Analysis.zip",
+      "display_name": "Signal  Ci Noise Analysis",
+      "size": 563522,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/4ba8c7a6__Signal--CI-Noise-Analysis.zip"
+    },
+    {
+      "session": "a1b31960",
+      "session_title": "OTel Canary Playbook + Rollback Bot",
+      "category": "otel",
+      "name": "soak_config.json",
+      "display_name": "Soak Config",
+      "size": 361,
+      "ext": "json",
+      "type": "artifact",
+      "path": "artifacts/a1b31960__soak_config.json"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "staging-memory-check.yml",
+      "display_name": "Staging Memory Check",
+      "size": 1574,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__staging-memory-check.yml"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "staging-memory-check-reusable.yml",
+      "display_name": "Staging Memory Check Reusable",
+      "size": 18327,
+      "ext": "yml",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__staging-memory-check-reusable.yml"
+    },
+    {
+      "session": "2e4274b3",
+      "session_title": "Stateful Aggregator Processor Scaffold",
+      "category": "otel",
+      "name": "statefulaggregatorprocessor.zip",
+      "display_name": "Statefulaggregatorprocessor",
+      "size": 63230,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/2e4274b3__statefulaggregatorprocessor.zip"
+    },
+    {
+      "session": "10fccecb",
+      "session_title": "OTLP Metrics Pipeline Integration Tests",
+      "category": "otel",
+      "name": "summarize_junit.py",
+      "display_name": "Summarize Junit",
+      "size": 10644,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/10fccecb__summarize_junit.py"
+    },
+    {
+      "session": "9e429458",
+      "session_title": "Terraform AWS GitHub OIDC Module",
+      "category": "iam",
+      "name": "terraform-aws-github-oidc.zip",
+      "display_name": "Terraform Aws Github Oidc",
+      "size": 17692,
+      "ext": "zip",
+      "type": "artifact",
+      "path": "artifacts/9e429458__terraform-aws-github-oidc.zip"
+    },
+    {
+      "session": "b6bf7f58",
+      "session_title": "OTel Benchmark Storage & Regression Refactor",
+      "category": "otel",
+      "name": "test_check_regression.py",
+      "display_name": "Test Check Regression",
+      "size": 18811,
+      "ext": "py",
+      "type": "artifact",
+      "path": "artifacts/b6bf7f58__test_check_regression.py"
+    },
+    {
+      "session": "64103b65",
+      "session_title": "OTel Perf Nightly + Drift + Scorecard",
+      "category": "otel",
+      "name": "trend_summary.csv",
+      "display_name": "Trend Summary",
+      "size": 3520,
+      "ext": "csv",
+      "type": "artifact",
+      "path": "artifacts/64103b65__trend_summary.csv"
+    },
+    {
+      "session": "2b532ab6",
+      "session_title": "RDS Migration Runbook + Preflight + Notion",
+      "category": "rds",
+      "name": "verify_rds_migration_config.sh",
+      "display_name": "Verify Rds Migration Config",
+      "size": 15692,
+      "ext": "sh",
+      "type": "artifact",
+      "path": "artifacts/2b532ab6__verify_rds_migration_config.sh"
+    },
+    {
+      "session": "64103b65",
+      "session_title": "OTel Perf Nightly + Drift + Scorecard",
+      "category": "otel",
+      "name": "b0327e50-a9b6-458e-9e46-0a60827245a1.png",
+      "display_name": "Image asset",
+      "size": 138564,
+      "ext": "png",
+      "type": "artifact",
+      "path": "artifacts/64103b65__b0327e50-a9b6-458e-9e46-0a60827245a1.png"
+    },
+    {
+      "session": "64103b65",
+      "session_title": "OTel Perf Nightly + Drift + Scorecard",
+      "category": "otel",
+      "name": "c3206430-42fe-4753-ac94-0d42dc94d43c.png",
+      "display_name": "Image asset",
+      "size": 614060,
+      "ext": "png",
+      "type": "artifact",
+      "path": "artifacts/64103b65__c3206430-42fe-4753-ac94-0d42dc94d43c.png"
+    },
+    {
+      "session": "7f33199a",
+      "session_title": "Benchmark Aggregation, Trend, PR Check",
+      "category": "otel",
+      "name": "8b701197-413f-44b2-8b5f-bc9f2930faab.png",
+      "display_name": "Image asset",
+      "size": 138274,
+      "ext": "png",
+      "type": "artifact",
+      "path": "artifacts/7f33199a__8b701197-413f-44b2-8b5f-bc9f2930faab.png"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "94b94e0b-ba0b-4771-880a-ea289051e0f0.png",
+      "display_name": "Image asset",
+      "size": 221842,
+      "ext": "png",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__94b94e0b-ba0b-4771-880a-ea289051e0f0.png"
+    },
+    {
+      "session": "d08cb53c",
+      "session_title": "Memory Leak Verdicts + Fleet Dashboard",
+      "category": "otel",
+      "name": "f2bfc0c7-1afb-409b-a539-9ab9793db778.png",
+      "display_name": "Image asset",
+      "size": 359821,
+      "ext": "png",
+      "type": "artifact",
+      "path": "artifacts/d08cb53c__f2bfc0c7-1afb-409b-a539-9ab9793db778.png"
+    },
+    {
+      "session": "ed1797ab",
+      "session_title": "OTLP E2E Framework + Stress Sweep + pprof",
+      "category": "otel",
+      "name": "1f619e9d-9a49-402f-b3a6-911f15fef521.png",
+      "display_name": "Image asset",
+      "size": 3811,
+      "ext": "png",
+      "type": "artifact",
+      "path": "artifacts/ed1797ab__1f619e9d-9a49-402f-b3a6-911f15fef521.png"
+    },
+    {
+      "session": "ed1797ab",
+      "session_title": "OTLP E2E Framework + Stress Sweep + pprof",
+      "category": "otel",
+      "name": "e354ccdc-0c5e-4141-9642-0051ce9da537.png",
+      "display_name": "Image asset",
+      "size": 3695,
+      "ext": "png",
+      "type": "artifact",
+      "path": "artifacts/ed1797ab__e354ccdc-0c5e-4141-9642-0051ce9da537.png"
+    }
+  ],
+  "stats": {
+    "total_sessions": 35,
+    "total_runbooks": 29,
+    "total_artifacts": 125,
+    "total_files": 154
+  }
+}

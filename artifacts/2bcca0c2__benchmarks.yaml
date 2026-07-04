@@ -1,0 +1,312 @@
+name: OTel Collector Performance Benchmarks
+
+# Trigger on pushes to main/develop, on pull requests targeting main,
+# and on a nightly schedule (03:00 UTC) so we always have fresh baselines.
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'scripts/benchmarks/**'
+      - '.github/workflows/benchmarks.yaml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'scripts/benchmarks/**'
+      - '.github/workflows/benchmarks.yaml'
+  schedule:
+    # Nightly at 03:00 UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      benchmark_duration:
+        description: 'Benchmark duration (e.g. 60s, 5m)'
+        required: false
+        default: '2m'
+
+# Cancel in-progress runs for the same PR/branch when a new commit arrives.
+concurrency:
+  group: benchmarks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write   # required to comment metrics on the PR
+  actions: read
+
+env:
+  GO_VERSION: '1.22'
+  BENCH_OUTPUT_DIR: ./benchmark-results
+  BENCH_DURATION: ${{ github.event.inputs.benchmark_duration || '2m' }}
+
+jobs:
+  benchmark:
+    name: Run OTel Collector Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      # ---------------------------------------------------------------
+      # 1. Checkout
+      # ---------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so we can diff against base
+
+      # ---------------------------------------------------------------
+      # 2. Set up Go toolchain
+      # ---------------------------------------------------------------
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: false   # we manage the cache manually below for finer control
+
+      # ---------------------------------------------------------------
+      # 3. Cache the Go build & module cache
+      # ---------------------------------------------------------------
+      - name: Resolve Go cache paths
+        id: go-cache-paths
+        run: |
+          echo "build=$(go env GOCACHE)"    >> "$GITHUB_OUTPUT"
+          echo "mod=$(go env GOMODCACHE)"   >> "$GITHUB_OUTPUT"
+
+      - name: Cache go-build-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.build }}
+            ${{ steps.go-cache-paths.outputs.mod }}
+          key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ env.GO_VERSION }}-
+
+      # ---------------------------------------------------------------
+      # 4. Install tools required by the benchmark script
+      # ---------------------------------------------------------------
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            jq bc gawk graphviz linux-tools-common
+          # pprof helper (used by the bash script to render profiles)
+          go install github.com/google/pprof@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Download Go modules
+        run: go mod download
+
+      # ---------------------------------------------------------------
+      # 5. Prepare output directory
+      # ---------------------------------------------------------------
+      - name: Prepare benchmark output directory
+        run: mkdir -p "${{ env.BENCH_OUTPUT_DIR }}"
+
+      # ---------------------------------------------------------------
+      # 6. Execute the custom OTel Collector performance script
+      # ---------------------------------------------------------------
+      - name: Run OTel Collector performance benchmark
+        id: run-bench
+        env:
+          BENCH_DURATION: ${{ env.BENCH_DURATION }}
+          BENCH_OUTPUT_DIR: ${{ env.BENCH_OUTPUT_DIR }}
+          # Common tunables consumed by the bash script
+          OTEL_LOG_LEVEL: warn
+          GOMAXPROCS: 2
+        run: |
+          chmod +x ./scripts/benchmarks/run-otel-benchmark.sh
+          ./scripts/benchmarks/run-otel-benchmark.sh \
+            --duration "${BENCH_DURATION}" \
+            --output   "${BENCH_OUTPUT_DIR}" \
+            --profile  cpu,heap \
+            --format   csv
+
+      # ---------------------------------------------------------------
+      # 7. Parse the results into a machine-readable summary
+      # ---------------------------------------------------------------
+      - name: Parse benchmark results
+        id: parse
+        run: |
+          set -euo pipefail
+          CSV="${BENCH_OUTPUT_DIR}/metrics.csv"
+
+          if [[ ! -f "$CSV" ]]; then
+            echo "::error::Expected metrics CSV not found at $CSV"
+            exit 1
+          fi
+
+          # Expected header:
+          # metric,unit,value
+          # e.g. throughput_spans_per_sec,spans/s,182345
+          throughput=$(awk -F',' '$1=="throughput_spans_per_sec"{print $3}' "$CSV")
+          p50_latency=$(awk -F',' '$1=="latency_p50_ms"{print $3}' "$CSV")
+          p95_latency=$(awk -F',' '$1=="latency_p95_ms"{print $3}' "$CSV")
+          p99_latency=$(awk -F',' '$1=="latency_p99_ms"{print $3}' "$CSV")
+          cpu_avg=$(awk -F',' '$1=="cpu_avg_pct"{print $3}' "$CSV")
+          mem_rss_mb=$(awk -F',' '$1=="mem_rss_mb"{print $3}' "$CSV")
+          alloc_mb=$(awk -F',' '$1=="alloc_mb"{print $3}' "$CSV")
+          gc_pause_ms=$(awk -F',' '$1=="gc_pause_p99_ms"{print $3}' "$CSV")
+          dropped=$(awk -F',' '$1=="dropped_spans_total"{print $3}' "$CSV")
+
+          {
+            echo "throughput=${throughput}"
+            echo "p50_latency=${p50_latency}"
+            echo "p95_latency=${p95_latency}"
+            echo "p99_latency=${p99_latency}"
+            echo "cpu_avg=${cpu_avg}"
+            echo "mem_rss_mb=${mem_rss_mb}"
+            echo "alloc_mb=${alloc_mb}"
+            echo "gc_pause_ms=${gc_pause_ms}"
+            echo "dropped=${dropped}"
+          } >> "$GITHUB_OUTPUT"
+
+          # Also generate a Markdown table for the job summary + PR comment
+          {
+            echo "## OTel Collector Benchmark Results"
+            echo ""
+            echo "**Commit:** \`${GITHUB_SHA::7}\`  "
+            echo "**Duration:** ${BENCH_DURATION}  "
+            echo "**Runner:** ${RUNNER_OS} (${RUNNER_ARCH})"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|---|---|"
+            echo "| Throughput | ${throughput} spans/s |"
+            echo "| Latency p50 | ${p50_latency} ms |"
+            echo "| Latency p95 | ${p95_latency} ms |"
+            echo "| Latency p99 | ${p99_latency} ms |"
+            echo "| CPU (avg) | ${cpu_avg} % |"
+            echo "| Memory RSS | ${mem_rss_mb} MB |"
+            echo "| Allocations | ${alloc_mb} MB |"
+            echo "| GC pause p99 | ${gc_pause_ms} ms |"
+            echo "| Dropped spans | ${dropped} |"
+          } > "${BENCH_OUTPUT_DIR}/summary.md"
+
+          # Write to the GitHub Actions Job Summary as well
+          cat "${BENCH_OUTPUT_DIR}/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      # ---------------------------------------------------------------
+      # 8. Upload artifacts: performance profile + CSV metrics
+      # ---------------------------------------------------------------
+      - name: Upload CSV metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: otel-benchmark-metrics-${{ github.run_id }}
+          path: |
+            ${{ env.BENCH_OUTPUT_DIR }}/metrics.csv
+            ${{ env.BENCH_OUTPUT_DIR }}/summary.md
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload performance profiles
+        uses: actions/upload-artifact@v4
+        with:
+          name: otel-benchmark-profiles-${{ github.run_id }}
+          path: |
+            ${{ env.BENCH_OUTPUT_DIR }}/*.pprof
+            ${{ env.BENCH_OUTPUT_DIR }}/*.prof
+            ${{ env.BENCH_OUTPUT_DIR }}/*.svg
+            ${{ env.BENCH_OUTPUT_DIR }}/flamegraph.html
+          if-no-files-found: warn
+          retention-days: 30
+
+      # ---------------------------------------------------------------
+      # 9. Comment key metrics on the pull request
+      # ---------------------------------------------------------------
+      - name: Comment benchmark summary on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          THROUGHPUT: ${{ steps.parse.outputs.throughput }}
+          P50: ${{ steps.parse.outputs.p50_latency }}
+          P95: ${{ steps.parse.outputs.p95_latency }}
+          P99: ${{ steps.parse.outputs.p99_latency }}
+          CPU_AVG: ${{ steps.parse.outputs.cpu_avg }}
+          MEM_RSS: ${{ steps.parse.outputs.mem_rss_mb }}
+          ALLOC: ${{ steps.parse.outputs.alloc_mb }}
+          GC_PAUSE: ${{ steps.parse.outputs.gc_pause_ms }}
+          DROPPED: ${{ steps.parse.outputs.dropped }}
+          RUN_ID: ${{ github.run_id }}
+        with:
+          script: |
+            const {
+              THROUGHPUT, P50, P95, P99,
+              CPU_AVG, MEM_RSS, ALLOC, GC_PAUSE, DROPPED, RUN_ID
+            } = process.env;
+
+            const marker = '<!-- otel-benchmark-report -->';
+            const body = [
+              marker,
+              '## 📊 OTel Collector Benchmark Results',
+              '',
+              `**Commit:** \`${context.sha.substring(0, 7)}\``,
+              `**Workflow run:** [#${RUN_ID}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${RUN_ID})`,
+              '',
+              '| Metric | Value |',
+              '|---|---|',
+              `| 🚀 Throughput | **${THROUGHPUT}** spans/s |`,
+              `| ⏱️ Latency p50 | ${P50} ms |`,
+              `| ⏱️ Latency p95 | ${P95} ms |`,
+              `| ⏱️ Latency p99 | **${P99}** ms |`,
+              `| 🖥️ CPU (avg) | ${CPU_AVG} % |`,
+              `| 💾 Memory RSS | ${MEM_RSS} MB |`,
+              `| 🧮 Allocations | ${ALLOC} MB |`,
+              `| ♻️ GC pause p99 | ${GC_PAUSE} ms |`,
+              `| ❌ Dropped spans | ${DROPPED} |`,
+              '',
+              '_Full CSV metrics and pprof profiles are attached as workflow artifacts._',
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            // Find an existing benchmark comment (idempotent updates)
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number, per_page: 100,
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body && c.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body,
+              });
+            }
+
+      # ---------------------------------------------------------------
+      # 10. Fail the job if critical thresholds regressed
+      # ---------------------------------------------------------------
+      - name: Enforce performance thresholds
+        if: always() && steps.parse.outcome == 'success'
+        env:
+          P99: ${{ steps.parse.outputs.p99_latency }}
+          DROPPED: ${{ steps.parse.outputs.dropped }}
+          # Adjust these to match your SLOs
+          MAX_P99_MS: '250'
+          MAX_DROPPED: '0'
+        run: |
+          set -euo pipefail
+          fail=0
+          if awk "BEGIN{exit !(${P99} > ${MAX_P99_MS})}"; then
+            echo "::error::p99 latency ${P99}ms exceeds threshold ${MAX_P99_MS}ms"
+            fail=1
+          fi
+          if [[ "${DROPPED}" -gt "${MAX_DROPPED}" ]]; then
+            echo "::error::Dropped ${DROPPED} spans (max allowed: ${MAX_DROPPED})"
+            fail=1
+          fi
+          exit $fail

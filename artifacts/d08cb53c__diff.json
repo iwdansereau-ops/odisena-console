@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-07-02T05:59:41Z",
+  "scope": "org/example-corp",
+  "new_regressions": [
+    {
+      "repo": "example-corp/warehouse-sync",
+      "verdict": "RETENTION_LEAK",
+      "ref_kind": "default_branch",
+      "ref_label": "main \u00b7 9988aa7",
+      "sha": "9988aa77bb66cc55dd44ee33ff22aa11bb00cc99",
+      "short_sha": "9988aa7",
+      "worst_function": "(*shelfIndex).snapshot",
+      "worst_bytes": 348901,
+      "worst_bytes_human": "340.7 KiB",
+      "description": "Retention leak: (*shelfIndex).snapshot +348901 B (flat).",
+      "pr_number": null,
+      "pr_title": null,
+      "pr_url": null,
+      "target_url": "https://github.com/example-corp/warehouse-sync/actions/runs/56010",
+      "previous_state": "CLEAN"
+    },
+    {
+      "repo": "example-corp/notifier",
+      "verdict": "ALLOC_CHURN",
+      "ref_kind": "pr",
+      "ref_label": "PR #214 \u00b7 aa11bb2",
+      "sha": "aa11bb22cc33dd44ee55ff66aa77bb88cc99dd00",
+      "short_sha": "aa11bb2",
+      "worst_function": null,
+      "worst_bytes": null,
+      "worst_bytes_human": "?",
+      "description": "Allocation churn / GC thrash detected.",
+      "pr_number": 214,
+      "pr_title": "switch to fan-out worker pool",
+      "pr_url": "https://github.com/example-corp/notifier/pull/214",
+      "target_url": "https://github.com/example-corp/notifier/actions/runs/17845",
+      "previous_state": "CLEAN"
+    }
+  ]
+}

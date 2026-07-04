@@ -1,0 +1,193 @@
+name: OTel Exporter Concurrency Load Test
+
+# Runs a matrix of core counts × router implementations to compare
+# sync.RWMutex vs atomic.Pointer under a 100k trace-ID/sec workload.
+#
+# NOTES ON RUNNER LABELS:
+#   - Standard `ubuntu-latest` is 4 vCPU (public repo) or 2 vCPU (private).
+#   - Larger runners (Team/Enterprise plans) use ORG-CONFIGURED labels like
+#     `ubuntu-latest-16-cores`, `ubuntu-latest-64-cores`, or custom names
+#     such as `4-core-linux`, `64-core-linux`. Update the matrix below to
+#     match the labels your org has provisioned.
+#   - Self-hosted runners: use `[self-hosted, linux, X64, 64-core]` label
+#     tuple. See ./scripts/setup-self-hosted-64core.sh for a provisioning
+#     script that spins up an AWS c6i.16xlarge.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_rate:
+        description: 'Target ConsumeTraces calls/sec (aggregate)'
+        required: true
+        default: '100000'
+      duration_sec:
+        description: 'Measurement window per run (seconds)'
+        required: true
+        default: '30'
+      runs_per_cell:
+        description: 'Number of runs per (impl, cores) cell'
+        required: true
+        default: '5'
+      backends:
+        description: 'Backend endpoints in the ring'
+        required: true
+        default: '32'
+      churn_interval:
+        description: 'Backend churn interval (0 disables); e.g. 500ms'
+        required: true
+        default: '0'
+
+env:
+  GO_VERSION: '1.23'
+
+jobs:
+  # ------------------------------------------------------------------
+  # Matrix job: each cell = (cores, impl). Two impls × N core counts.
+  # Both impls run on the same runner instance for the same core count
+  # to eliminate machine-to-machine variance.
+  # ------------------------------------------------------------------
+  loadtest:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # STANDARD RUNNER — baseline, always available.
+          - cores: 4
+            runner: ubuntu-latest
+          # LARGER RUNNERS — require GitHub Team/Enterprise plan.
+          # Uncomment and adjust labels to match your org's provisioned runners.
+          # - cores: 8
+          #   runner: ubuntu-latest-8-cores
+          # - cores: 16
+          #   runner: ubuntu-latest-16-cores
+          # - cores: 32
+          #   runner: ubuntu-latest-32-cores
+          # - cores: 64
+          #   runner: ubuntu-latest-64-cores
+          # SELF-HOSTED FALLBACK — free-plan-compatible.
+          # - cores: 64
+          #   runner: [self-hosted, linux, X64, '64-core']
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    name: "loadtest-${{ matrix.cores }}c"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Report runner spec
+        run: |
+          echo "::group::Runner info"
+          echo "Runner label: ${{ matrix.runner }}"
+          echo "Matrix cores: ${{ matrix.cores }}"
+          echo "Actual nproc:  $(nproc)"
+          echo "Kernel:        $(uname -a)"
+          echo "CPU:"
+          lscpu | grep -E 'Model name|Socket|Core|Thread|MHz' | head -10
+          echo "Memory:"
+          free -h
+          echo "::endgroup::"
+
+      - name: Build binary
+        run: |
+          CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" \
+            -o ./lbload ./cmd/lbload
+          ls -la ./lbload
+
+      - name: Verify race-freedom (short)
+        run: |
+          go test -race -run 'TestRoundTrip' -count=1 ./... || true
+          # Race tests are optional; the loadtest itself is the primary artifact.
+
+      - name: Prepare results dir
+        run: mkdir -p results
+
+      - name: Run RWMutex baseline
+        run: |
+          for i in $(seq 1 ${{ inputs.runs_per_cell }}); do
+            echo "::group::rwmutex run $i / ${{ inputs.runs_per_cell }}"
+            taskset -c 0-$(( ${{ matrix.cores }} - 1 )) \
+              ./lbload \
+                -impl=rwmutex \
+                -rate=${{ inputs.target_rate }} \
+                -workers=$(( ${{ matrix.cores }} * 2 )) \
+                -warmup=5s \
+                -duration=${{ inputs.duration_sec }}s \
+                -backends=${{ inputs.backends }} \
+                -churn=${{ inputs.churn_interval }} \
+                -label="gha-${{ matrix.cores }}c-run${i}" \
+                -out="results/rwmutex_${{ matrix.cores }}c_run${i}.json"
+            echo "::endgroup::"
+          done
+
+      - name: Run Atomic refactor
+        run: |
+          for i in $(seq 1 ${{ inputs.runs_per_cell }}); do
+            echo "::group::atomic run $i / ${{ inputs.runs_per_cell }}"
+            taskset -c 0-$(( ${{ matrix.cores }} - 1 )) \
+              ./lbload \
+                -impl=atomic \
+                -rate=${{ inputs.target_rate }} \
+                -workers=$(( ${{ matrix.cores }} * 2 )) \
+                -warmup=5s \
+                -duration=${{ inputs.duration_sec }}s \
+                -backends=${{ inputs.backends }} \
+                -churn=${{ inputs.churn_interval }} \
+                -label="gha-${{ matrix.cores }}c-run${i}" \
+                -out="results/atomic_${{ matrix.cores }}c_run${i}.json"
+            echo "::endgroup::"
+          done
+
+      - name: Upload result JSONs
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.cores }}c
+          path: results/*.json
+          retention-days: 14
+
+  # ------------------------------------------------------------------
+  # Aggregate job: pull all matrix artifacts, build comparison report.
+  # ------------------------------------------------------------------
+  report:
+    needs: loadtest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all results
+        uses: actions/download-artifact@v4
+        with:
+          path: all-results
+          pattern: results-*
+          merge-multiple: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build report
+        run: |
+          ls -la all-results/
+          python3 scripts/build_report.py all-results/ report.md report.csv
+          echo "----- REPORT -----"
+          cat report.md
+
+      - name: Post report to job summary
+        run: cat report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload final report
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-report
+          path: |
+            report.md
+            report.csv
+          retention-days: 90

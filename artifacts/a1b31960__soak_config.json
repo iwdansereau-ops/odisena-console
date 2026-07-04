@@ -1,0 +1,9 @@
+{
+  "prometheus_url": "",
+  "prometheus_bearer": "",
+  "grafana_dashboard_url": "",
+  "slack_channel_id": "U0BEJLF170E",
+  "soak_start_iso": "2026-07-02T07:21:00Z",
+  "total_hours": 24,
+  "notes": "PROMETHEUS_URL is empty on purpose — first fire will DM the user asking for it. Update this file with the real endpoint and the cron continues automatically."
+}

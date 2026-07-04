@@ -1,0 +1,257 @@
+# CI for the custom OpenTelemetry Collector distribution.
+#
+# Three jobs, run in order:
+#   1. test        — vet + unit tests for the exporter module
+#   2. build       — ocb assembles the custom Collector binary
+#   3. smoke-test  — start the binary against config.yaml, send OTLP traces
+#                    with telemetrygen, assert the custom exporter logged them
+#
+# Versions live in `env:` at the top so bumps are a one-line change and
+# every job stays in lockstep — mismatched Collector versions between OCB,
+# the component go.mod, and telemetrygen are the #1 cause of build breakage.
+
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel in-flight runs for the same ref when a new commit is pushed.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.23"
+  OTELCOL_VERSION: "0.116.0"
+  # telemetrygen ships from opentelemetry-collector-contrib and follows the
+  # same version stream; pin it explicitly so smoke tests are reproducible.
+  TELEMETRYGEN_VERSION: "0.116.0"
+
+permissions:
+  contents: read
+
+jobs:
+  # -------------------------------------------------------------------------
+  # 1. Unit tests
+  # -------------------------------------------------------------------------
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          # Cache is keyed off go.sum in the exporter module.
+          cache-dependency-path: exporter/loggingtraceexporter/go.sum
+
+      - name: Resolve module dependencies
+        working-directory: exporter/loggingtraceexporter
+        run: go mod tidy
+
+      - name: go vet
+        working-directory: exporter/loggingtraceexporter
+        run: go vet ./...
+
+      - name: go test (race + coverage)
+        working-directory: exporter/loggingtraceexporter
+        run: |
+          go test -race -covermode=atomic -coverprofile=coverage.out -v ./...
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: exporter/loggingtraceexporter/coverage.out
+          retention-days: 7
+
+  # -------------------------------------------------------------------------
+  # 2. OCB build
+  # -------------------------------------------------------------------------
+  build:
+    name: OCB build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: exporter/loggingtraceexporter/go.sum
+
+      - name: Install OCB (opentelemetry-collector-builder)
+        run: |
+          go install go.opentelemetry.io/collector/cmd/builder@v${{ env.OTELCOL_VERSION }}
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Verify builder is on PATH
+        run: builder version
+
+      - name: Sanity-check manifest version matches env
+        run: |
+          # Fail fast if someone bumps env.OTELCOL_VERSION but forgets the
+          # manifest — the two must agree or OCB pulls mismatched modules.
+          grep -q "otelcol_version: ${OTELCOL_VERSION}" build/manifest.yaml \
+            || { echo "::error::build/manifest.yaml otelcol_version does not match env.OTELCOL_VERSION (${OTELCOL_VERSION})"; exit 1; }
+
+      - name: Build custom Collector
+        working-directory: build
+        run: builder --config manifest.yaml
+
+      - name: Verify custom exporter is linked in
+        working-directory: build
+        run: |
+          ./_build/otelcol-custom components > components.txt
+          cat components.txt
+          grep -q '^\s*-\s*loggingtrace$' components.txt \
+            || grep -q 'loggingtrace' components.txt \
+            || { echo "::error::loggingtrace exporter not present in built binary"; exit 1; }
+
+      - name: Upload Collector binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: otelcol-custom
+          path: build/_build/otelcol-custom
+          retention-days: 7
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------------
+  # 3. Startup smoke test
+  # -------------------------------------------------------------------------
+  # Downloads the binary produced by the build job, starts it with the
+  # sample config.yaml, sends a small batch of OTLP traces via telemetrygen,
+  # and asserts the loggingtrace exporter logged them. Any of the following
+  # fail the job:
+  #   * Collector exits before "Everything is ready"
+  #   * Config parses but the exporter fails to start
+  #   * telemetrygen can't reach the OTLP endpoint
+  #   * The custom exporter's prefix never appears in the Collector logs
+  smoke-test:
+    name: Startup smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Download Collector binary
+        uses: actions/download-artifact@v4
+        with:
+          name: otelcol-custom
+          path: bin
+
+      - name: Make binary executable
+        run: chmod +x bin/otelcol-custom
+
+      - name: Install telemetrygen
+        run: |
+          go install github.com/open-telemetry/opentelemetry-collector-contrib/cmd/telemetrygen@v${{ env.TELEMETRYGEN_VERSION }}
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Validate config parses (dry run)
+        # `validate` loads the config and instantiates components without
+        # opening ports. Catches YAML/schema issues before the real start.
+        run: ./bin/otelcol-custom validate --config ./build/config.yaml
+
+      - name: Start Collector in background
+        run: |
+          # Redirect both streams to a log file we can grep later.
+          nohup ./bin/otelcol-custom --config ./build/config.yaml \
+            > collector.log 2>&1 &
+          echo $! > collector.pid
+          echo "Started Collector PID $(cat collector.pid)"
+
+      - name: Wait for Collector readiness
+        run: |
+          # Poll the log for the standard "Everything is ready" line the
+          # Collector prints once all pipelines are up. 30s cap.
+          for i in $(seq 1 30); do
+            if grep -q "Everything is ready" collector.log; then
+              echo "Collector is ready after ${i}s"
+              exit 0
+            fi
+            # Fail fast if the process died before becoming ready.
+            if ! kill -0 "$(cat collector.pid)" 2>/dev/null; then
+              echo "::error::Collector process exited before becoming ready"
+              cat collector.log
+              exit 1
+            fi
+            sleep 1
+          done
+          echo "::error::Collector did not become ready within 30s"
+          cat collector.log
+          exit 1
+
+      - name: Confirm loggingtrace exporter started
+        # The exporter logs a startup line on Start(); its absence means
+        # our factory wiring is broken even if the pipeline came up.
+        run: |
+          grep -q "loggingtrace exporter started" collector.log \
+            || { echo "::error::custom exporter did not log its startup line"; cat collector.log; exit 1; }
+
+      - name: Send test traces via telemetrygen
+        run: |
+          telemetrygen traces \
+            --otlp-endpoint localhost:4317 \
+            --otlp-insecure \
+            --traces 5 \
+            --child-spans 2 \
+            --duration 3s
+
+      - name: Give the Collector a moment to flush
+        run: sleep 3
+
+      - name: Assert custom exporter received traces
+        run: |
+          # The loggingtrace exporter prefixes every batch line with the
+          # value from config.yaml ("[loggingtrace]"). If we don't see it,
+          # traces never made it through the pipeline to our exporter.
+          if ! grep -q "\[loggingtrace\] received traces:" collector.log; then
+            echo "::error::custom exporter did not log any received traces"
+            echo "----- collector.log -----"
+            cat collector.log
+            exit 1
+          fi
+          echo "Sample lines from custom exporter:"
+          grep "\[loggingtrace\]" collector.log | head -n 20
+
+      - name: Stop Collector
+        if: always()
+        run: |
+          if [ -f collector.pid ]; then
+            pid=$(cat collector.pid)
+            if kill -0 "$pid" 2>/dev/null; then
+              kill "$pid"
+              # Give it 5s to exit cleanly; SIGKILL if not.
+              for _ in $(seq 1 5); do
+                kill -0 "$pid" 2>/dev/null || break
+                sleep 1
+              done
+              kill -9 "$pid" 2>/dev/null || true
+            fi
+          fi
+
+      - name: Upload Collector logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: collector-logs
+          path: collector.log
+          retention-days: 7
+          if-no-files-found: warn

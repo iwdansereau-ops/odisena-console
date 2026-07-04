@@ -1,0 +1,207 @@
+name: OTel Collector E2E
+
+# Runs the E2E test suite on every push and on every PR. The report.md
+# and report.json artefacts are uploaded so you can spot regressions in
+# pipeline processing / data integrity from the PR checks tab.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+# Cancel in-progress runs for the same ref when a new commit lands.
+concurrency:
+  group: otel-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write   # needed to post the report comment on PRs
+
+jobs:
+  e2e:
+    name: Pipeline E2E (otelcol-contrib latest)
+    runs-on: ubuntu-latest
+    # 20min ceiling: pipeline + resource-health suites add up to ~5min
+    # on ubuntu-latest, the community-config bench adds another ~4min
+    # (four configs sequentially), and the stress sweep at [5k, 10k,
+    # 25k, 50k] with 8s steps + 2s warmup + 2s cooldown lands around
+    # ~4min. 20min gives us ~1.7x headroom over the observed worst case.
+    timeout-minutes: 20
+
+    env:
+      # Central place to bump the collector version. "latest" is resolved
+      # dynamically below, but you can pin (e.g. "v0.106.0") to make CI
+      # deterministic when debugging a flake.
+      OTELCOL_VERSION: latest
+      # Where the harness will write report.json / report.md. The examples
+      # test defaults to t.TempDir(); we override via env so the workflow
+      # can pick it up regardless of test package layout.
+      OTEL_E2E_REPORT_DIR: ${{ github.workspace }}/otel-e2e-report
+      # Stress-sweep tuning: the runner env vars are honoured by
+      # examples/stress_test.go. Keep windows short in CI (throughput
+      # discovery matters more than statistical stability), but preserve
+      # the full [5k, 10k, 25k, 50k] ladder so the knee-point number is
+      # comparable across runs.
+      STRESS_LADDER: "5000,10000,25000,50000"
+      STRESS_STEP_DURATION: "8s"
+      STRESS_WARMUP: "2s"
+      STRESS_COOLDOWN: "2s"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+
+      - name: Resolve otelcol-contrib download URL
+        id: resolve
+        run: |
+          set -euo pipefail
+          # Resolve "latest" against the opentelemetry-collector-releases
+          # repo, which is where signed otelcol-contrib tarballs live.
+          if [ "${OTELCOL_VERSION}" = "latest" ]; then
+            TAG=$(curl -fsSL \
+              https://api.github.com/repos/open-telemetry/opentelemetry-collector-releases/releases/latest \
+              | jq -r .tag_name)
+          else
+            TAG="${OTELCOL_VERSION}"
+          fi
+          # Release tags are like "v0.106.0"; the tarball drops the leading "v".
+          VERSION="${TAG#v}"
+          ASSET="otelcol-contrib_${VERSION}_linux_amd64.tar.gz"
+          URL="https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/${TAG}/${ASSET}"
+          echo "tag=${TAG}"       >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "url=${URL}"       >> "$GITHUB_OUTPUT"
+          echo "Resolved otelcol-contrib ${TAG} → ${URL}"
+
+      - name: Cache otelcol-contrib binary
+        id: cache-otelcol
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.tools/otelcol
+          key: otelcol-contrib-${{ steps.resolve.outputs.version }}-linux-amd64
+
+      - name: Download otelcol-contrib
+        if: steps.cache-otelcol.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p .tools/otelcol
+          curl -fsSL "${{ steps.resolve.outputs.url }}" -o /tmp/otelcol.tgz
+          tar -xzf /tmp/otelcol.tgz -C .tools/otelcol
+          # Some releases nest the binary under a versioned subdir; flatten.
+          if [ ! -f .tools/otelcol/otelcol-contrib ]; then
+            find .tools/otelcol -type f -name 'otelcol-contrib' -exec cp {} .tools/otelcol/ \;
+          fi
+          chmod +x .tools/otelcol/otelcol-contrib
+          .tools/otelcol/otelcol-contrib --version
+
+      - name: Prepare report directory
+        run: mkdir -p "${OTEL_E2E_REPORT_DIR}"
+
+      - name: Run E2E test suite
+        env:
+          COLLECTOR_BIN: ${{ github.workspace }}/.tools/otelcol/otelcol-contrib
+        run: |
+          set -euo pipefail
+          # -v so failures surface in the checks UI; -count=1 disables the
+          # build cache so a flake can't be papered over by a stale pass.
+          # The 15m per-test timeout is defensive against a runaway
+          # stress sweep — the sweep normally finishes in ~4min.
+          go test -v -count=1 -timeout=15m ./examples/... \
+            2>&1 | tee "${OTEL_E2E_REPORT_DIR}/test-output.log"
+
+      - name: Verify report artefacts
+        # Runs even on failure so a partial report is still visible on the PR.
+        if: always()
+        run: |
+          set -euo pipefail
+          # The examples test writes report.{json,md} directly into
+          # OTEL_E2E_REPORT_DIR (honoured by pipeline_e2e_test.go). If the
+          # test bailed before Close(), leave a stub so downstream steps
+          # still have something to upload / comment.
+          if [ ! -f "${OTEL_E2E_REPORT_DIR}/report.md" ]; then
+            {
+              echo "# OTel Collector Pipeline E2E — no report produced"
+              echo
+              echo "The harness did not reach the report-flush step. See test-output.log for details."
+            } > "${OTEL_E2E_REPORT_DIR}/report.md"
+          fi
+          ls -la "${OTEL_E2E_REPORT_DIR}"
+
+      - name: Upload report as workflow artefact
+        # Whole report dir goes up in one archive: report.json,
+        # report.md, collector.log, rendered-config.yaml, the two
+        # stress-sweep PNGs (latency-vs-throughput.png,
+        # rss-vs-throughput.png) when the stress suite ran, and any
+        # heap-step-<N>-<target>sps.pb.gz files the runner captured
+        # when a step's peak RSS exceeded the budget (256 MiB by
+        # default). Inspect a captured heap with:
+        #   go tool pprof -top -sample_index=inuse_space heap-step-*.pb.gz
+        # The report.md "Heap profile" sections also list the top-5
+        # allocators inline for quick triage without downloading the
+        # artefact.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: otel-e2e-report-${{ github.run_id }}
+          path: ${{ env.OTEL_E2E_REPORT_DIR }}
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Post report summary on PR
+        # Only runs for pull requests, and only when a report.md exists.
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const reportPath = path.join(process.env.OTEL_E2E_REPORT_DIR, 'report.md');
+            if (!fs.existsSync(reportPath)) {
+              core.warning(`No report.md at ${reportPath}; skipping PR comment.`);
+              return;
+            }
+            const body = fs.readFileSync(reportPath, 'utf8');
+            const marker = '<!-- otel-e2e-report -->';
+            const header = `${marker}\n## OTel Collector Pipeline E2E — run [\`${context.runId}\`](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})\n\n`;
+            const composed = header + body;
+
+            // Upsert: replace any prior report comment from this workflow.
+            const {data: comments} = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                comment_id: existing.id,
+                body: composed,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: context.issue.number,
+                body: composed,
+              });
+            }
+
+      - name: Append report to workflow summary
+        if: always()
+        run: |
+          if [ -f "${OTEL_E2E_REPORT_DIR}/report.md" ]; then
+            {
+              echo "## OTel Collector Pipeline E2E"
+              echo ""
+              cat "${OTEL_E2E_REPORT_DIR}/report.md"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

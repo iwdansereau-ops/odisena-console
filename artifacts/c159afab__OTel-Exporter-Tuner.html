@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OTel Exporter Tuner — sending_queue &amp; retry_on_failure</title>
+    <meta name="description" content="Interactive OpenTelemetry Collector exporterhelper configuration generator: tune sending_queue and retry_on_failure from throughput, batch size, backend latency, and memory budget." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="OTel Tuner home">
+        <svg viewBox="0 0 32 32" width="26" height="26" fill="none" aria-hidden="true">
+          <rect x="2" y="2" width="28" height="28" rx="6" stroke="currentColor" stroke-width="2"/>
+          <path d="M8 20 L14 12 L20 18 L26 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="14" cy="12" r="1.8" fill="currentColor"/>
+          <circle cx="20" cy="18" r="1.8" fill="currentColor"/>
+        </svg>
+        <span>otel<em>·</em>tuner</span>
+      </a>
+      <div class="topbar-meta">
+        <span class="pill">exporterhelper</span>
+        <a class="link" href="https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/exporterhelper/README.md" target="_blank" rel="noopener">docs ↗</a>
+      </div>
+    </header>
+
+    <main class="grid">
+      <!-- LEFT: Inputs -->
+      <section class="panel inputs" aria-label="Workload inputs">
+        <h1>Workload</h1>
+        <p class="lede">Describe your telemetry pipeline. The generator sizes <code>sending_queue</code> and <code>retry_on_failure</code> against your memory budget and diagnoses drop risk.</p>
+
+        <div class="field">
+          <label for="throughput">Target throughput <span class="hint">events / sec</span></label>
+          <div class="input-row">
+            <input id="throughput" type="number" min="1" step="100" value="10000" />
+            <input id="throughput-range" type="range" min="100" max="500000" step="100" value="10000" />
+          </div>
+          <div class="microstat" id="throughput-echo">10 000 spans · metric points · log records per second</div>
+        </div>
+
+        <div class="field">
+          <label for="batch">Avg batch size <span class="hint">items / request</span></label>
+          <div class="input-row">
+            <input id="batch" type="number" min="1" step="1" value="512" />
+            <input id="batch-range" type="range" min="1" max="16384" step="1" value="512" />
+          </div>
+          <div class="microstat" id="batch-echo">≈ 20 requests / sec at current throughput</div>
+        </div>
+
+        <div class="field">
+          <label for="latency">Backend latency <span class="hint">ms per export</span></label>
+          <div class="input-row">
+            <input id="latency" type="number" min="1" step="10" value="250" />
+            <input id="latency-range" type="range" min="1" max="5000" step="1" value="250" />
+          </div>
+          <div class="microstat" id="latency-echo">P50 round-trip to exporter endpoint</div>
+        </div>
+
+        <div class="field">
+          <label for="memory">Memory budget <span class="hint">MB for queue</span></label>
+          <div class="input-row">
+            <input id="memory" type="number" min="16" step="16" value="512" />
+            <input id="memory-range" type="range" min="16" max="8192" step="16" value="512" />
+          </div>
+          <div class="microstat" id="memory-echo">Portion of the Collector RAM you're willing to spend on the sending queue</div>
+        </div>
+
+        <details class="advanced">
+          <summary>Advanced assumptions</summary>
+          <div class="field">
+            <label for="bytes">Bytes / event <span class="hint">serialized size estimate</span></label>
+            <input id="bytes" type="number" min="50" step="10" value="500" />
+          </div>
+          <div class="field">
+            <label for="buffer">Outage buffer window <span class="hint">seconds of queue depth</span></label>
+            <input id="buffer" type="number" min="1" step="1" value="30" />
+          </div>
+          <div class="field">
+            <label for="sizer">Queue sizer</label>
+            <select id="sizer">
+              <option value="requests" selected>requests (default, cheapest)</option>
+              <option value="items">items (predictable memory)</option>
+              <option value="bytes">bytes (least performant)</option>
+            </select>
+          </div>
+        </details>
+
+        <div class="actions">
+          <button id="reset" class="btn ghost" type="button">Reset</button>
+        </div>
+      </section>
+
+      <!-- RIGHT: Outputs -->
+      <section class="panel outputs" aria-label="Generated configuration">
+        <div class="output-head">
+          <h2>Generated YAML</h2>
+          <div class="output-actions">
+            <button id="copy" class="btn" type="button">Copy</button>
+            <button id="download" class="btn ghost" type="button">Download</button>
+          </div>
+        </div>
+
+        <pre class="yaml" id="yaml-out" aria-live="polite"></pre>
+
+        <div class="metrics" aria-label="Computed footprint">
+          <div class="metric">
+            <div class="metric-label">queue_size</div>
+            <div class="metric-value" id="m-queue">—</div>
+            <div class="metric-sub" id="m-queue-sub">requests</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">num_consumers</div>
+            <div class="metric-value" id="m-consumers">—</div>
+            <div class="metric-sub" id="m-consumers-sub">workers</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Memory footprint</div>
+            <div class="metric-value" id="m-memory">—</div>
+            <div class="metric-sub" id="m-memory-sub">of budget</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Drain capacity</div>
+            <div class="metric-value" id="m-drain">—</div>
+            <div class="metric-sub" id="m-drain-sub">vs ingest rate</div>
+          </div>
+        </div>
+
+        <div class="diagnostics">
+          <h3>Queue-full diagnostics</h3>
+          <ul id="diag-list" class="diag-list"></ul>
+        </div>
+
+        <div class="rationale">
+          <h3>Why these numbers</h3>
+          <ul id="rationale-list" class="rat-list"></ul>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>Based on the <a href="https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/exporterhelper/README.md" target="_blank" rel="noopener">exporterhelper reference</a> and <a href="https://opentelemetry.io/docs/collector/resiliency/" target="_blank" rel="noopener">Collector resiliency guide</a>. Sizing rule follows the community formula: <code>queue_size = buffer_seconds × requests_per_second</code>; consumers follow Little's Law over backend latency.</p>
+    </footer>
+
+    <script src="./app.js"></script>
+  <script data-pplx-inline-edit>
+(function () {
+  if (window === window.top) return;
+
+  const allowedParentOrigins = ["https://www.perplexity.ai","https://perplexity.ai","https://testing.perplexity.ai","https://staging.perplexity.ai","https://*.preview.i.perplexity.ai","http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"];
+  const MAX_FONT_BYTES = 500 * 1024;
+  const MAX_TOTAL_FONT_BYTES = 2 * 1024 * 1024;
+  let scrollForwarding = false;
+  let scrollRaf = 0;
+  let trustedTopOrigin = null;
+
+  // Allow entries like "https://*.preview.i.perplexity.ai" — the wildcard
+  // matches a single DNS label (no dots), so "https://*.foo" cannot stretch
+  // across multiple labels.
+  function matchesAllowedOrigin(origin) {
+    if (!origin) return false;
+    for (const entry of allowedParentOrigins) {
+      if (!entry.includes("*")) {
+        if (entry === origin) return true;
+        continue;
+      }
+      const pattern = new RegExp(
+        "^" +
+          entry.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^.]+") +
+          "$",
+      );
+      if (pattern.test(origin)) return true;
+    }
+    return false;
+  }
+
+  // Trust decision: when the sender is same-origin-visible (event.origin is a
+  // real origin like https://www.perplexity.ai) we trust event.origin directly.
+  // When event.origin is "null" (opaque broker srcdoc), we fall back to the
+  // broker's stamped `parentOrigin` to identify the top window. The fallback
+  // is claim-only — we rely on the browser's native `targetOrigin` enforcement
+  // on the response path (see postToTrustedTop) to ensure replies can't be
+  // delivered to anyone but the actual top window of that claimed origin.
+  function getTrustedParentOrigin(event) {
+    const forwardedParentOrigin =
+      typeof event.data.parentOrigin === "string" ? event.data.parentOrigin : null;
+    const parentOrigin = event.origin === "null" ? forwardedParentOrigin : event.origin;
+    return matchesAllowedOrigin(parentOrigin) ? parentOrigin : null;
+  }
+
+  // All responses go to window.top with targetOrigin = the allowlisted origin.
+  // An attacker that iframes us inside their own null-origin broker can claim
+  // any parentOrigin they like, but the browser will drop the reply whenever
+  // the real top's origin doesn't match — so the screenshot never leaves.
+  function postToTrustedTop(message) {
+    if (!trustedTopOrigin) return;
+    try {
+      window.top.postMessage(message, trustedTopOrigin);
+    } catch (_error) {}
+  }
+
+  function inlineAll(original, clone) {
+    if (original.nodeType !== 1 || clone.nodeType !== 1) return;
+
+    try {
+      const computedStyle = getComputedStyle(original);
+      // cssText on a computed style is the serialized declaration in modern
+      // Chromium/Safari — a single read beats enumerating ~400 longhand
+      // properties. Firefox returns "" here, so we fall back on empty.
+      const serialized = computedStyle.cssText;
+      if (serialized) {
+        clone.style.cssText = serialized;
+      } else {
+        const parts = new Array(computedStyle.length);
+        for (let index = 0; index < computedStyle.length; index += 1) {
+          const property = computedStyle[index];
+          parts[index] = `${property}:${computedStyle.getPropertyValue(property)};`;
+        }
+        clone.style.cssText = parts.join("");
+      }
+    } catch (_error) {}
+
+    const originalChildren = original.children;
+    const clonedChildren = clone.children;
+    for (
+      let index = 0;
+      index < originalChildren.length && index < clonedChildren.length;
+      index += 1
+    ) {
+      inlineAll(originalChildren[index], clonedChildren[index]);
+    }
+  }
+
+  function extractFontUrl(srcValue) {
+    const matches = [
+      ...srcValue.matchAll(
+        /url\(["']?([^"')]+)["']?\)(?:\s*format\(["']?([^"')]+)["']?\))?/gi,
+      ),
+    ];
+    if (matches.length === 0) return null;
+    const woff2 = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff2"));
+    if (woff2) return woff2[1];
+    const woff = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff"));
+    if (woff) return woff[1];
+    return matches[0][1];
+  }
+
+  // Cache resolved font URL -> data URI across captures. Fonts on a page
+  // essentially never change, and a batch run emits multiple captures back to
+  // back — without this we'd refetch + re-base64 every time.
+  const fontDataUriCache = new Map();
+  const SRC_DECLARATION_RE = /src\s*:\s*[^;}]+/i;
+
+  async function fetchAsDataUri(url) {
+    if (fontDataUriCache.has(url)) return fontDataUriCache.get(url);
+    let dataUri = null;
+    try {
+      const response = await fetch(url, { mode: "cors", credentials: "omit" });
+      if (response.ok) {
+        const blob = await response.blob();
+        if (blob.size <= MAX_FONT_BYTES) {
+          dataUri = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () =>
+              resolve(typeof reader.result === "string" ? reader.result : null);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          });
+        }
+      }
+    } catch (_error) {
+      dataUri = null;
+    }
+    fontDataUriCache.set(url, dataUri);
+    return dataUri;
+  }
+
+  function collectFontFaceRuleTexts() {
+    const rules = [];
+    for (const sheet of document.styleSheets) {
+      let cssRules;
+      try {
+        cssRules = sheet.cssRules;
+      } catch (_error) {
+        continue;
+      }
+      if (!cssRules) continue;
+      for (const rule of cssRules) {
+        const cssText = rule.cssText || "";
+        if (cssText.startsWith("@font-face")) rules.push(cssText);
+      }
+    }
+    return rules;
+  }
+
+  async function buildInlinedFontCss() {
+    const ruleTexts = collectFontFaceRuleTexts();
+    if (ruleTexts.length === 0) return null;
+
+    const resolved = ruleTexts.map((cssText) => {
+      if (!SRC_DECLARATION_RE.test(cssText)) return null;
+      const srcMatch = cssText.match(/src\s*:\s*([^;}]+)[;}]/i);
+      if (!srcMatch) return null;
+      const url = extractFontUrl(srcMatch[1]);
+      if (!url) return null;
+      try {
+        return { cssText, url: new URL(url, document.baseURI).href };
+      } catch (_error) {
+        return null;
+      }
+    });
+
+    const dataUris = await Promise.all(
+      resolved.map((entry) => (entry ? fetchAsDataUri(entry.url) : Promise.resolve(null))),
+    );
+
+    const inlined = [];
+    let totalBytes = 0;
+    for (let index = 0; index < resolved.length; index += 1) {
+      const entry = resolved[index];
+      const dataUri = dataUris[index];
+      if (!entry || !dataUri) continue;
+      const approxBytes = dataUri.length * 0.75;
+      if (totalBytes + approxBytes > MAX_TOTAL_FONT_BYTES) break;
+      totalBytes += approxBytes;
+      inlined.push(entry.cssText.replace(SRC_DECLARATION_RE, `src: url("${dataUri}")`));
+    }
+    return inlined.length > 0 ? inlined.join("\n") : null;
+  }
+
+  function stripExternal(clone) {
+    const images = clone.querySelectorAll("img");
+    for (let index = 0; index < images.length; index += 1) {
+      const src = images[index].getAttribute("src");
+      if (src && !src.startsWith("data:")) images[index].removeAttribute("src");
+    }
+
+    const elements = clone.querySelectorAll("*");
+    for (let index = 0; index < elements.length; index += 1) {
+      const style = elements[index].style.cssText;
+      if (style && style.includes("url(")) {
+        elements[index].style.cssText = style.replace(
+          /url\(["']?(?!data:)[^)"']*["']?\)/gi,
+          "none",
+        );
+      }
+    }
+  }
+
+  function emitScroll() {
+    scrollRaf = 0;
+    if (!scrollForwarding) return;
+    postToTrustedTop({
+      type: "INLINE_EDIT_SCROLL",
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+    });
+  }
+
+  window.addEventListener(
+    "scroll",
+    function () {
+      if (!scrollForwarding || scrollRaf) return;
+      scrollRaf = requestAnimationFrame(emitScroll);
+    },
+    { passive: true, capture: true },
+  );
+
+  async function handleCaptureRequest(event) {
+    const requestId = event.data.requestId;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    function postResult(dataUrl) {
+      postToTrustedTop({
+        type: "INLINE_EDIT_SCREENSHOT_RESULT",
+        requestId,
+        dataUrl,
+        scrollX,
+        scrollY,
+      });
+    }
+
+    try {
+      // Wait for any pending web fonts to resolve so both inline metrics and
+      // the @font-face inlining below see the same loaded faces.
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.ready;
+        } catch (_error) {}
+      }
+
+      const clone = document.documentElement.cloneNode(true);
+      inlineAll(document.documentElement, clone);
+
+      const removedNodes = clone.querySelectorAll("script,link[rel=\"stylesheet\"],style");
+      for (let index = 0; index < removedNodes.length; index += 1) {
+        removedNodes[index].remove();
+      }
+
+      stripExternal(clone);
+
+      // Re-embed web fonts as data-URI @font-face rules so the SVG rasterizer
+      // can resolve them — external font URLs aren't fetched during
+      // foreignObject rendering, which would otherwise force a fallback face
+      // and change text metrics.
+      const inlinedFontCss = await buildInlinedFontCss();
+      if (inlinedFontCss) {
+        const styleEl = document.createElement("style");
+        styleEl.textContent = inlinedFontCss;
+        const head = clone.querySelector("head");
+        if (head) head.appendChild(styleEl);
+        else clone.insertBefore(styleEl, clone.firstChild);
+      }
+
+      const html = new XMLSerializer().serializeToString(clone);
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+        '<foreignObject width="100%" height="100%">' +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden">` +
+        `<div style="position:relative;left:-${scrollX}px;top:-${scrollY}px">` +
+        html +
+        "</div></div></foreignObject></svg>";
+      const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      const image = new Image();
+      image.onload = function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(image, 0, 0);
+        postResult(canvas.toDataURL("image/png"));
+      };
+      image.onerror = function () {
+        postResult(null);
+      };
+      image.src = svgUrl;
+    } catch (_error) {
+      postResult(null);
+    }
+  }
+
+  window.addEventListener("message", function (event) {
+    if (!event.data) return;
+    // Only accept messages from the direct parent frame. Blocks sibling /
+    // unrelated-window postMessage senders that could otherwise reach us.
+    if (event.source !== window.parent) return;
+
+    const trustedParentOrigin = getTrustedParentOrigin(event);
+    if (!trustedParentOrigin) return;
+    trustedTopOrigin = trustedParentOrigin;
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_START") {
+      scrollForwarding = true;
+      emitScroll();
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_STOP") {
+      scrollForwarding = false;
+      if (scrollRaf) cancelAnimationFrame(scrollRaf);
+      scrollRaf = 0;
+      return;
+    }
+
+    if (event.data.type !== "INLINE_EDIT_CAPTURE_REQUEST") return;
+
+    handleCaptureRequest(event);
+  });
+})();
+
+
+</script></body>
+</html>

@@ -1,0 +1,181 @@
+name: Benchmark PR Check
+
+# Runs the perf suite N times on every PR to main, takes the per-metric
+# median to neutralize runner noise, compares that median against the
+# latest baseline stored on the benchmark-data branch, comments the
+# delta table on the PR, and fails the build if any metric regresses
+# beyond the threshold (default 5%).
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".github/ISSUE_TEMPLATE/**"
+
+concurrency:
+  group: benchmark-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  # Number of times to run the suite per PR. Change via repo variable
+  # BENCHMARK_RUNS if you want to tune it without editing the workflow.
+  RUNS: ${{ vars.BENCHMARK_RUNS || '5' }}
+
+jobs:
+  compare:
+    name: Run and compare
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ---- Run the suite N times ---------------------------------------
+      # Each iteration writes to benchmarks/raw/run-N.json. We warm up
+      # once before the timed loop so JIT/caches settle — the warmup
+      # output is thrown away. Failures in individual runs abort the
+      # job rather than silently reducing the sample size.
+      - name: Warm up benchmark suite
+        run: |
+          mkdir -p benchmarks/raw
+          npm run benchmark -- --json --out=benchmarks/raw/warmup.json
+          rm benchmarks/raw/warmup.json
+
+      - name: Run benchmark suite ${{ env.RUNS }}× 
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 "$RUNS"); do
+            echo "::group::benchmark run $i/$RUNS"
+            npm run benchmark -- --json --out="benchmarks/raw/run-${i}.json"
+            echo "::endgroup::"
+          done
+          ls -la benchmarks/raw
+
+      # ---- Compute per-metric median ----------------------------------
+      - name: Compute median across runs
+        run: |
+          python3 scripts/median_benchmarks.py \
+            --inputs 'benchmarks/raw/run-*.json' \
+            --output benchmarks/latest.json \
+            --min-samples 3
+
+      # ---- Fetch baseline from benchmark-data (sparse + shallow) ------
+      - name: Fetch baseline from benchmark-data
+        id: fetch-baseline
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p baseline
+          git clone --depth 1 --branch benchmark-data --filter=blob:none \
+            --sparse "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            _baseline_repo
+          cd _baseline_repo
+          git sparse-checkout set benchmarks
+          LATEST=$(ls -1 benchmarks/run-*.json 2>/dev/null | sort | tail -n1 || true)
+          if [ -z "$LATEST" ] && [ -f benchmarks/latest.json ]; then
+            LATEST=benchmarks/latest.json
+          fi
+          if [ -z "$LATEST" ]; then
+            echo "no baseline found on benchmark-data branch"
+            exit 78
+          fi
+          echo "baseline: $LATEST"
+          cp "$LATEST" ../baseline/latest.json
+
+      - name: Handle missing baseline
+        if: steps.fetch-baseline.outcome != 'success' || hashFiles('baseline/latest.json') == ''
+        run: |
+          mkdir -p _out
+          cat > _out/pr-comment.md <<'EOF'
+          ## Benchmark comparison
+
+          No baseline found on `benchmark-data` yet — this PR's median
+          across ${{ env.RUNS }} runs will become the first data point
+          once merged. Future PRs will be compared against it automatically.
+          <!-- benchmark-comparison-marker -->
+          EOF
+          echo "SKIP_COMPARE=1" >> "$GITHUB_ENV"
+
+      # ---- Compare median against baseline ----------------------------
+      - name: Compare against baseline
+        if: env.SKIP_COMPARE != '1'
+        id: compare
+        run: |
+          mkdir -p _out
+          set +e
+          python3 scripts/compare_benchmarks.py \
+            --current benchmarks/latest.json \
+            --baseline baseline/latest.json \
+            --threshold ${{ vars.BENCHMARK_THRESHOLD || '5' }} \
+            --output _out/pr-comment.md \
+            --summary "$GITHUB_STEP_SUMMARY"
+          echo "compare_exit=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      # ---- Append the noise report to the PR comment ------------------
+      # Surfaces the per-metric coefficient of variation so reviewers can
+      # tell "flaky metric" from "real signal" at a glance.
+      - name: Append noise report to comment
+        if: env.SKIP_COMPARE != '1'
+        run: |
+          python3 - <<'PY' >> _out/pr-comment.md
+          import json
+          data = json.load(open("benchmarks/latest.json"))
+          stats = data.get("stats", {})
+          if not stats:
+              raise SystemExit(0)
+          print()
+          print("<details><summary>Noise report (across "
+                f"{max(s['samples'] for s in stats.values())} runs)</summary>")
+          print()
+          print("| Metric | Median | Min | Max | CV |")
+          print("|---|---:|---:|---:|---:|")
+          for name, s in sorted(stats.items()):
+              print(f"| `{name}` | {s['median']:.4g} | {s['min']:.4g} | "
+                    f"{s['max']:.4g} | {s['cv']:.2f}% |")
+          print()
+          print("</details>")
+          PY
+
+      - name: Upsert PR comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: benchmark-comparison
+          path: _out/pr-comment.md
+
+      - name: Upload benchmark artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: |
+            benchmarks/raw/
+            benchmarks/latest.json
+            baseline/latest.json
+            _out/pr-comment.md
+          retention-days: 30
+
+      - name: Fail on regression
+        if: env.SKIP_COMPARE != '1' && steps.compare.outputs.compare_exit == '1'
+        run: |
+          echo "::error::Benchmark regression detected — see PR comment for details."
+          exit 1

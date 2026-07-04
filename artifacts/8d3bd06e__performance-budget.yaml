@@ -1,0 +1,202 @@
+# =============================================================================
+# OTel Pipeline Performance Budget & Threshold Configuration
+# =============================================================================
+# Single source of truth for the nightly performance-gate workflow.
+# Consumed by scripts/compare_to_baseline.py and the reusable GH Actions job.
+#
+# Threshold semantics:
+#   - baseline = trimmed mean of the last N successful production runs
+#   - drift    = (current - baseline) / baseline  (signed; higher-is-worse
+#                metrics are inverted so a regression is always positive)
+#   - warn     = surfaces in the scorecard + PR comment, does NOT block
+#   - fail     = blocks the nightly merge to `main`
+# =============================================================================
+
+schema_version: 1
+
+# ---------- Baseline window ---------------------------------------------------
+baseline:
+  window_days: 7                # rolling 7-day window
+  min_samples: 5                # require >=5 clean runs before gating
+  aggregation: trimmed_mean     # trimmed_mean | median | mean
+  trim_pct: 10                  # discard top/bottom 10% before averaging
+  source: production            # only "success" runs from prod-scale rig
+  storage_backend: s3           # s3 | gcs | github-artifact
+  storage_uri: s3://otel-perf-baselines/nightly/
+
+# ---------- Noise handling (cloud CI reality) --------------------------------
+# GitHub-hosted runners typically produce 2-4% CV; self-hosted bare-metal
+# under 1%. We ADAPT the effective threshold when observed noise exceeds
+# the metric's fail threshold, to keep false-positive rate <1%.
+noise_control:
+  runner_class: self_hosted_bare_metal   # github_hosted | self_hosted_bare_metal
+  min_repetitions_per_metric: 5          # M >= 5 runs, tip from FOSDEM 2026
+  min_samples_per_repetition: 30         # N >= 30 samples per run
+  warmup_seconds: 60                     # discarded from every run
+  steady_state_seconds: 300              # 5 min sustained load minimum
+  cooldown_seconds: 60                   # drain queues between runs
+  outlier_filter: iqr                    # iqr | mad | none
+  iqr_multiplier: 1.5
+  # Statistical gate: only fail if the observed shift is significant
+  significance_test: welch_t             # welch_t | mann_whitney | change_point
+  alpha: 0.01                            # p < 0.01 required to fail
+  # Adaptive floor: never fail below 2x observed baseline CV
+  min_threshold_multiplier_of_cv: 2.0
+  # Canary test: if the canary regresses, blame CI infrastructure, not code
+  canary_workload: telemetrygen_baseline_1k_spans
+  canary_max_drift_pct: 3.0
+
+# ---------- Metrics catalog ---------------------------------------------------
+# Each metric declares:
+#   collector       - PromQL query against otelcol_* + container metrics
+#   direction       - higher_is_worse | lower_is_worse
+#   warn_pct        - warning threshold (soft)
+#   fail_pct        - failure threshold (blocks merge)
+#   absolute_floor  - never alert below this raw value (avoids noise near zero)
+#   owner           - team paged on regression
+metrics:
+
+  # -------- Latency budget (client-observed roundtrip through pipeline) ------
+  - id: e2e_p50_latency_ms
+    title: End-to-end P50 latency
+    collector: histogram_quantile(0.50, sum by (le) (rate(otelcol_exporter_send_latency_bucket[5m])))
+    unit: ms
+    direction: higher_is_worse
+    warn_pct: 5
+    fail_pct: 10
+    absolute_floor: 5
+    owner: pipeline-perf
+
+  - id: e2e_p95_latency_ms
+    title: End-to-end P95 latency
+    collector: histogram_quantile(0.95, sum by (le) (rate(otelcol_exporter_send_latency_bucket[5m])))
+    unit: ms
+    direction: higher_is_worse
+    warn_pct: 5
+    fail_pct: 10
+    absolute_floor: 20
+    owner: pipeline-perf
+
+  - id: e2e_p99_latency_ms
+    title: End-to-end P99 latency
+    collector: histogram_quantile(0.99, sum by (le) (rate(otelcol_exporter_send_latency_bucket[5m])))
+    unit: ms
+    direction: higher_is_worse
+    warn_pct: 7           # P99 is naturally noisier, wider warn band
+    fail_pct: 15
+    absolute_floor: 50
+    owner: pipeline-perf
+
+  # -------- Throughput budget -----------------------------------------------
+  - id: sustained_throughput_sps
+    title: Sustained throughput (spans/sec)
+    collector: sum(rate(otelcol_receiver_accepted_spans_total[5m]))
+    unit: spans_per_sec
+    direction: lower_is_worse
+    warn_pct: 5
+    fail_pct: 10
+    absolute_floor: 1000
+    owner: pipeline-perf
+
+  - id: peak_throughput_sps
+    title: Peak sustainable throughput before refusal
+    collector: max_over_time(sum(rate(otelcol_receiver_accepted_spans_total[1m]))[30m:1m])
+    unit: spans_per_sec
+    direction: lower_is_worse
+    warn_pct: 5
+    fail_pct: 10
+    absolute_floor: 1000
+    owner: pipeline-perf
+
+  # -------- Efficiency budget (per-span cost) -------------------------------
+  # These are the KEY drift metrics — a code change that makes the collector
+  # 10% less efficient per span is a real regression even at unchanged volume.
+  - id: cpu_cores_per_kspans
+    title: CPU cores per 1000 spans/sec
+    collector: |
+      sum(rate(container_cpu_usage_seconds_total{container="collector"}[5m]))
+      /
+      (sum(rate(otelcol_receiver_accepted_spans_total[5m])) / 1000)
+    unit: cores_per_kspans
+    direction: higher_is_worse
+    warn_pct: 5
+    fail_pct: 10
+    absolute_floor: 0.001
+    owner: pipeline-perf
+
+  - id: memory_mib_per_kspans
+    title: Memory (MiB) per 1000 spans/sec
+    collector: |
+      avg(container_memory_working_set_bytes{container="collector"}) / 1048576
+      /
+      (sum(rate(otelcol_receiver_accepted_spans_total[5m])) / 1000)
+    unit: mib_per_kspans
+    direction: higher_is_worse
+    warn_pct: 5
+    fail_pct: 10
+    absolute_floor: 1
+    owner: pipeline-perf
+
+  - id: alloc_bytes_per_span
+    title: Heap allocation bytes per span (GC pressure)
+    collector: rate(go_memstats_alloc_bytes_total{job="otel-collector"}[5m]) / sum(rate(otelcol_receiver_accepted_spans_total[5m]))
+    unit: bytes
+    direction: higher_is_worse
+    warn_pct: 5
+    fail_pct: 10
+    absolute_floor: 100
+    owner: pipeline-perf
+
+  # -------- Reliability budget (must-not-regress signals) -------------------
+  - id: refused_spans_rate
+    title: Receiver refused spans / sec
+    collector: sum(rate(otelcol_receiver_refused_spans_total[5m]))
+    unit: spans_per_sec
+    direction: higher_is_worse
+    warn_pct: 0            # any increase warns
+    fail_pct: 0            # any positive value fails, guarded by absolute_floor
+    absolute_floor: 1      # tolerate noise <=1 refused span/sec
+    owner: pipeline-perf
+
+  - id: exporter_send_failed_rate
+    title: Exporter send-failed spans / sec
+    collector: sum(rate(otelcol_exporter_send_failed_spans_total[5m]))
+    unit: spans_per_sec
+    direction: higher_is_worse
+    warn_pct: 0
+    fail_pct: 0
+    absolute_floor: 1
+    owner: pipeline-perf
+
+  - id: exporter_queue_saturation
+    title: Exporter queue saturation (fraction)
+    collector: max(otelcol_exporter_queue_size / otelcol_exporter_queue_capacity)
+    unit: ratio
+    direction: higher_is_worse
+    warn_pct: 10
+    fail_pct: 25
+    absolute_floor: 0.05
+    owner: pipeline-perf
+
+  - id: batch_send_size_p50
+    title: Batch send size (P50) - regressions imply inefficient batching
+    collector: histogram_quantile(0.50, rate(otelcol_processor_batch_batch_send_size_bucket[5m]))
+    unit: items
+    direction: lower_is_worse
+    warn_pct: 15
+    fail_pct: 30
+    absolute_floor: 100
+    owner: pipeline-perf
+
+# ---------- Reporting --------------------------------------------------------
+reporting:
+  scorecard_path: reports/scorecard.md
+  scorecard_json: reports/scorecard.json
+  pr_comment: true
+  slack_channel: "#otel-perf-alerts"
+  page_on_fail:
+    - severity: high
+      condition: any_reliability_metric_fails
+    - severity: medium
+      condition: "two_or_more_efficiency_metrics_fail"
+  history_retention_days: 90

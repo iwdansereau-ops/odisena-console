@@ -1,0 +1,131 @@
+name: Benchmark Data Collection
+
+# Reusable workflow: can be triggered on a schedule, manually, or called
+# from another workflow via `workflow_call`. Emits performance metrics as
+# JSON and commits them to a dedicated `benchmark-data` branch so the
+# main branch's protection rules and history remain untouched.
+on:
+  workflow_call:
+    inputs:
+      benchmark-command:
+        description: "Command that runs the performance suite and writes JSON output."
+        required: false
+        type: string
+        default: "npm run benchmark -- --json --out=benchmarks/latest.json"
+      artifact-path:
+        description: "Glob of files to commit (relative to repo root)."
+        required: false
+        type: string
+        default: "benchmarks/"
+      destination-branch:
+        description: "Branch that stores the accumulated benchmark data."
+        required: false
+        type: string
+        default: "benchmark-data"
+      runner:
+        description: "Runner image to use."
+        required: false
+        type: string
+        default: "ubuntu-latest"
+  workflow_dispatch:
+  schedule:
+    # Every day at 06:00 UTC. Adjust to taste.
+    - cron: "0 6 * * *"
+
+# Prevent overlapping runs from racing each other on the destination branch.
+concurrency:
+  group: benchmark-data-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  # `contents: write` is what allows GITHUB_TOKEN to push commits.
+  contents: write
+
+jobs:
+  collect:
+    name: Collect and commit benchmarks
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+
+    steps:
+      # 1. Check out the SOURCE branch (default branch) so the benchmark
+      #    suite has access to the current code. We fetch full history
+      #    because we'll switch branches later and want git to resolve
+      #    refs cleanly. `persist-credentials: true` keeps GITHUB_TOKEN
+      #    bound to the local git config so subsequent pushes authenticate.
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      # 2. Toolchain setup — swap for your language/runtime as needed.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 3. Run the performance suite. This should produce JSON files under
+      #    the path referenced by `inputs.artifact-path` (default: benchmarks/).
+      - name: Run benchmark suite
+        run: ${{ inputs.benchmark-command }}
+
+      # 4. Stash the generated JSON OUTSIDE the working tree before we
+      #    switch branches. This is the key trick: the destination branch
+      #    has a different tree, and we don't want the benchmark files
+      #    tangled up in a branch switch or overwritten by a checkout.
+      - name: Stage benchmark output
+        run: |
+          mkdir -p "$RUNNER_TEMP/benchmark-payload"
+          cp -R ${{ inputs.artifact-path }} "$RUNNER_TEMP/benchmark-payload/"
+
+      # 5. Switch to the destination branch. If it doesn't exist yet, create
+      #    it as an ORPHAN so it has no shared history with main — this
+      #    keeps the data branch small and prevents accidental merges back
+      #    into protected branches.
+      - name: Checkout or create destination branch
+        env:
+          DEST: ${{ inputs.destination-branch || 'benchmark-data' }}
+        run: |
+          git fetch origin "$DEST" || true
+          if git show-ref --verify --quiet "refs/remotes/origin/$DEST"; then
+            git checkout -B "$DEST" "origin/$DEST"
+          else
+            git checkout --orphan "$DEST"
+            git rm -rf . >/dev/null 2>&1 || true
+            echo "# Benchmark Data" > README.md
+            git add README.md
+          fi
+
+      # 6. Move the stashed JSON back into the working tree on the
+      #    destination branch. Timestamp the file so runs never collide.
+      - name: Restore benchmark output onto destination branch
+        run: |
+          mkdir -p benchmarks
+          cp -R "$RUNNER_TEMP/benchmark-payload/." benchmarks/
+          TS=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
+          if [ -f benchmarks/latest.json ]; then
+            cp benchmarks/latest.json "benchmarks/run-${TS}.json"
+          fi
+
+      # 7. Commit and push using git-auto-commit-action. This action reads
+      #    GITHUB_TOKEN from the environment (already wired by checkout),
+      #    sets the committer identity, and pushes to `branch`. Because we
+      #    target `benchmark-data` — not `main` — protection rules on the
+      #    default branch don't apply.
+      - name: Commit benchmark data
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(benchmarks): update metrics ${{ github.run_id }}"
+          branch: ${{ inputs.destination-branch || 'benchmark-data' }}
+          file_pattern: "benchmarks/*.json README.md"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"
+          commit_author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          # Push even when the branch was freshly created (orphan case).
+          push_options: "--force-with-lease"
+          skip_dirty_check: false
+          skip_fetch: false

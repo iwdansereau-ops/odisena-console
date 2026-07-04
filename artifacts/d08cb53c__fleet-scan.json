@@ -1,0 +1,65 @@
+{
+  "scanned_at": "2026-07-02T05:38:56Z",
+  "target": "iwdansereau-ops",
+  "target_kind": "user",
+  "counts": {
+    "total": 2,
+    "not_go": 1,
+    "ready": 1,
+    "needs_handler": 0,
+    "clone_failed": 0
+  },
+  "repos": [
+    {
+      "full_name": "iwdansereau-ops/gomem-dashboard",
+      "default_branch": "main",
+      "language": "Go",
+      "archived": false,
+      "status": "ready",
+      "has_go_mod": true,
+      "implements_memstats_handler": true,
+      "go_mod_paths": [
+        "go.mod"
+      ],
+      "main_go_paths": [
+        "cmd/sample-processor/main.go",
+        "cmd/gomem/main.go"
+      ],
+      "readmemstats_paths": [
+        "cmd/sample-processor/main.go:25:\t\truntime.ReadMemStats(&ms)"
+      ],
+      "pprof_import_paths": [
+        "cmd/sample-processor/main.go:11:\t_ \"net/http/pprof\""
+      ],
+      "memstats_route_paths": [
+        "internal/gcstats/gcstats.go:9:// Go services already do this via expvar or a dedicated /debug/memstats",
+        "internal/gcstats/gcstats.go:74:// Fetch downloads a JSON runtime.MemStats from `<baseURL>/debug/memstats`.",
+        "internal/gcstats/gcstats.go:78:\treturn FetchURL(ctx, baseURL+\"/debug/memstats\", hc)",
+        "cmd/sample-processor/main.go:18:// registerMemStats exposes runtime.MemStats as JSON at /debug/memstats.",
+        "cmd/sample-processor/main.go:23:\thttp.HandleFunc(\"/debug/memstats\", func(w http.ResponseWriter, r *http.Request) {",
+        "cmd/sample-processor/main.go:101:\tlog.Println(\"sample-processor listening on :6060 (pprof at /debug/pprof, memstats at /debug/memstats)\")",
+        "cmd/gomem/main.go:72:  gomem capture --url URL --dir DIR [--interval 30s] [--count 12] [--memstats-path /debug/memstats]",
+        "cmd/gomem/main.go:89:\tmemstatsPath := fs.String(\"memstats-path\", \"/debug/memstats\",",
+        "cmd/gomem/main.go:105:\t// heap profile, so we must hit /debug/memstats separately — the two",
+        "cmd/gomem/main.go:152:\tbase := fs.String(\"base\", \"\", \"pprof base URL; --url becomes <base>/debug/memstats\")",
+        "cmd/gomem/main.go:162:\t\ttarget = *base + \"/debug/memstats\""
+      ],
+      "has_staging_workflow": true
+    },
+    {
+      "full_name": "iwdansereau-ops/otel-collector-config",
+      "default_branch": "main",
+      "language": "",
+      "archived": false,
+      "status": "not-go",
+      "has_go_mod": false,
+      "implements_memstats_handler": false,
+      "go_mod_paths": [],
+      "main_go_paths": [],
+      "readmemstats_paths": [],
+      "pprof_import_paths": [],
+      "memstats_route_paths": [],
+      "has_staging_workflow": false
+    }
+  ]
+}

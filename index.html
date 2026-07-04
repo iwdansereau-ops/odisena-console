@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Odisena" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="description" content="Odisena Console — engineering command center for OTel, RDS migration, and IAM security work." />
+
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png" />
+<link rel="apple-touch-icon" sizes="167x167" href="icons/icon-167.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
+<link rel="icon" type="image/png" href="icons/icon-192.png" />
+<link rel="icon" type="image/svg+xml" href="icons/favicon.svg" />
+
+<title>Odisena Console</title>
+<link rel="stylesheet" href="styles.css" />
+<link rel="preload" href="catalog.json" as="fetch" crossorigin="" />
+</head>
+<body>
+<div id="app" class="app">
+  <!-- Home -->
+  <section id="view-home" class="view view-active" data-view="home">
+    <header class="hero">
+      <div class="hero-inner">
+        <div class="brand">
+          <svg class="logo" viewBox="0 0 40 40" fill="none" aria-label="Odisena">
+            <rect x="4" y="4" width="32" height="32" rx="8" stroke="currentColor" stroke-width="2"/>
+            <circle cx="20" cy="20" r="6" fill="currentColor"/>
+            <path d="M20 4 L20 12 M20 28 L20 36 M4 20 L12 20 M28 20 L36 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <div>
+            <div class="brand-name">Odisena Console</div>
+            <div class="brand-sub">Engineering command center</div>
+          </div>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="stats" id="stats-grid">
+      <div class="stat"><div class="stat-num" data-stat="sessions">—</div><div class="stat-label">Sessions</div></div>
+      <div class="stat"><div class="stat-num" data-stat="runbooks">—</div><div class="stat-label">Runbooks</div></div>
+      <div class="stat"><div class="stat-num" data-stat="artifacts">—</div><div class="stat-label">Artifacts</div></div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Domains</h2>
+      <div class="cat-grid" id="cat-grid"></div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Quick access</h2>
+      <div class="quick-grid">
+        <button class="quick-card" data-nav="runbooks" data-filter="rds">
+          <div class="quick-emoji">📘</div>
+          <div class="quick-title">RDS migration runbook</div>
+          <div class="quick-sub">Zero-downtime DDL & 2TB backfill</div>
+        </button>
+        <button class="quick-card" data-nav="runbooks" data-filter="otel">
+          <div class="quick-emoji">📊</div>
+          <div class="quick-title">OTel benchmark reports</div>
+          <div class="quick-sub">Perf scorecard, drift, variance</div>
+        </button>
+        <button class="quick-card" data-nav="artifacts" data-filter="iam">
+          <div class="quick-emoji">🔒</div>
+          <div class="quick-title">IAM tooling</div>
+          <div class="quick-sub">DDB auditor, OIDC modules</div>
+        </button>
+        <button class="quick-card" data-nav="ops">
+          <div class="quick-emoji">🚦</div>
+          <div class="quick-title">Ops status</div>
+          <div class="quick-sub">Scheduled tasks & health</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Recent work</h2>
+      <div class="session-list" id="session-list-preview"></div>
+    </div>
+  </section>
+
+  <!-- Runbooks list + reader -->
+  <section id="view-runbooks" class="view" data-view="runbooks">
+    <header class="page-header">
+      <button class="back-btn" data-back>‹</button>
+      <h1>Runbooks</h1>
+    </header>
+    <div class="search">
+      <input type="search" id="runbook-search" placeholder="Search runbooks…" autocomplete="off" />
+    </div>
+    <div class="chip-row" id="runbook-chips"></div>
+    <div class="doc-list" id="runbook-list"></div>
+  </section>
+
+  <section id="view-reader" class="view" data-view="reader">
+    <header class="page-header reader-header">
+      <button class="back-btn" data-back>‹</button>
+      <h1 id="reader-title">Runbook</h1>
+    </header>
+    <article class="markdown" id="reader-body"></article>
+  </section>
+
+  <!-- Artifacts -->
+  <section id="view-artifacts" class="view" data-view="artifacts">
+    <header class="page-header">
+      <button class="back-btn" data-back>‹</button>
+      <h1>Artifacts</h1>
+    </header>
+    <div class="search">
+      <input type="search" id="artifact-search" placeholder="Search artifacts…" autocomplete="off" />
+    </div>
+    <div class="chip-row" id="artifact-chips"></div>
+    <div class="artifact-list" id="artifact-list"></div>
+  </section>
+
+  <!-- Sessions -->
+  <section id="view-sessions" class="view" data-view="sessions">
+    <header class="page-header">
+      <button class="back-btn" data-back>‹</button>
+      <h1>Sessions</h1>
+    </header>
+    <div class="search">
+      <input type="search" id="session-search" placeholder="Search sessions…" autocomplete="off" />
+    </div>
+    <div class="session-list" id="session-list"></div>
+  </section>
+
+  <!-- Ops -->
+  <section id="view-ops" class="view" data-view="ops">
+    <header class="page-header">
+      <button class="back-btn" data-back>‹</button>
+      <h1>Ops</h1>
+    </header>
+    <div class="ops-content">
+      <div class="ops-card">
+        <div class="ops-card-title">Scheduled tasks</div>
+        <div class="ops-item">
+          <div class="ops-item-dot" style="background:#10b981"></div>
+          <div>
+            <div class="ops-item-title">Monday plan-regression</div>
+            <div class="ops-item-sub">Weekly · staging pg_stat_statements top 20</div>
+          </div>
+        </div>
+        <div class="ops-item">
+          <div class="ops-item-dot" style="background:#10b981"></div>
+          <div>
+            <div class="ops-item-title">OTel perf nightly</div>
+            <div class="ops-item-sub">Daily · drift analysis + scorecard</div>
+          </div>
+        </div>
+        <div class="ops-item">
+          <div class="ops-item-dot" style="background:#f59e0b"></div>
+          <div>
+            <div class="ops-item-title">Cardinality review</div>
+            <div class="ops-item-sub">Weekly · sandbox drift audit</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ops-card">
+        <div class="ops-card-title">Notion dashboards</div>
+        <div class="ops-item">
+          <div class="ops-item-dot" style="background:#3b82f6"></div>
+          <div>
+            <div class="ops-item-title">RDS Migration Monitoring</div>
+            <div class="ops-item-sub">Preflight runs · logged via log_preflight_to_notion.py</div>
+          </div>
+        </div>
+        <div class="ops-item">
+          <div class="ops-item-dot" style="background:#8b5cf6"></div>
+          <div>
+            <div class="ops-item-title">SecReview (DDB policies)</div>
+            <div class="ops-item-sub">Asana workflow template</div>
+          </div>
+        </div>
+        <div class="ops-item">
+          <div class="ops-item-dot" style="background:#f59e0b"></div>
+          <div>
+            <div class="ops-item-title">Operations Command Center</div>
+            <div class="ops-item-sub">Brain page · aggregated links</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ops-card">
+        <div class="ops-card-title">GitHub workflows built</div>
+        <div class="ops-tags" id="ops-workflows"></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="install-banner" class="install-banner" hidden>
+  <div class="install-icon">⬆</div>
+  <div class="install-text">
+    <b>Install Odisena Console</b>
+    Tap Share, then “Add to Home Screen”.
+  </div>
+  <button class="install-close" id="install-close" aria-label="Dismiss">×</button>
+</div>
+
+<nav class="tabbar" id="tabbar">
+  <button class="tab tab-active" data-nav="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12L12 3l9 9M5 10v10h14V10"/></svg>
+    <span>Home</span>
+  </button>
+  <button class="tab" data-nav="runbooks">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h11a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4z"/><path d="M4 17a3 3 0 0 1 3-3h11"/></svg>
+    <span>Runbooks</span>
+  </button>
+  <button class="tab" data-nav="artifacts">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4M4 17l8 4 8-4"/></svg>
+    <span>Artifacts</span>
+  </button>
+  <button class="tab" data-nav="sessions">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    <span>Sessions</span>
+  </button>
+  <button class="tab" data-nav="ops">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="4"/></svg>
+    <span>Ops</span>
+  </button>
+</nav>
+
+<script src="marked.min.js" defer></script>
+<script src="app.js" defer></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>

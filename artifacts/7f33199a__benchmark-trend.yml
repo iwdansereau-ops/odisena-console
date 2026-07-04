@@ -1,0 +1,87 @@
+name: Publish Benchmark Trend
+
+# Reads every JSON file from the benchmark-data branch, aggregates them,
+# and publishes an interactive chart to GitHub Pages. The static PNG
+# artifact is also written back to the benchmark-data branch so it can
+# be embedded directly in README.md.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 6 * * *"          # 30 min after the data-collection cron
+  push:
+    branches: [benchmark-data]     # rebuild whenever new data lands
+
+permissions:
+  contents: write   # push the regenerated PNG back to benchmark-data
+  pages: write      # deploy to GitHub Pages
+  id-token: write   # required by actions/deploy-pages
+
+concurrency:
+  group: benchmark-trend
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Aggregate and render
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.commit-png.outputs.changes_detected }}
+    steps:
+      - name: Checkout benchmark-data
+        uses: actions/checkout@v4
+        with:
+          ref: benchmark-data
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Checkout main (for scripts/)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: _main
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install matplotlib
+
+      - name: Aggregate benchmarks and render charts
+        run: |
+          python _main/scripts/aggregate_benchmarks.py \
+            --input-dir benchmarks \
+            --output-dir site
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      # Commit the refreshed PNG back to benchmark-data so README embeds
+      # always show the latest chart without hitting Pages.
+      - name: Copy PNG into repo root for README embed
+        run: cp site/trend.png trend.png
+
+      - name: Commit updated chart
+        id: commit-png
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(benchmarks): refresh trend chart"
+          branch: benchmark-data
+          file_pattern: "trend.png"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

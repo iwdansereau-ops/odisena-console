@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 690 354" width="690" height="354" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#7a1f1f"/>
+  </marker>
+</defs>
+<rect width="100%" height="100%" fill="#fafafa"/>
+<text x="40" y="42" font-size="22" font-weight="700" fill="#111">Heap Growth: heap_20260702T043753Z.pb.gz → heap_20260702T043756Z.pb.gz</text>
+<text x="40" y="66" font-size="13" fill="#555">Total delta: 2.10 MB   ·   Nodes: 3   ·   Edges: 2</text>
+<path d="M345.0,152.0 C345.0,172.0 170.0,172.0 170.0,192.0" fill="none" stroke="#7a1f1f" stroke-width="5.00" stroke-opacity="0.90" marker-end="url(#arrow)"/><text x="257.5" y="172.0" font-size="10" fill="#7a1f1f" text-anchor="middle">1.60 MB</text><path d="M345.0,152.0 C345.0,172.0 520.0,172.0 520.0,192.0" fill="none" stroke="#7a1f1f" stroke-width="2.26" stroke-opacity="0.52" marker-end="url(#arrow)"/><text x="432.5" y="172.0" font-size="10" fill="#7a1f1f" text-anchor="middle">516.0 KB</text><g>
+  <rect x="40.0" y="192.0" rx="8" ry="8" width="260.0" height="62.0" fill="#7f0000" stroke="#7a1f1f" stroke-width="1.4"/>
+  <text x="50.0" y="212.0" font-size="12" font-weight="700" fill="#fff">main.processBatch</text>
+  <text x="50.0" y="230.0" font-size="11" fill="#f5f5f5">flat: 1.60 MB   cum: 1.60 MB</text>
+  <text x="50.0" y="246.0" font-size="10" fill="#eaeaea">sample-processor/main.go:27</text>
+</g><g>
+  <rect x="390.0" y="192.0" rx="8" ry="8" width="260.0" height="62.0" fill="#d7a9a1" stroke="#7a1f1f" stroke-width="1.4"/>
+  <text x="400.0" y="212.0" font-size="12" font-weight="700" fill="#111">main.enqueueEvents</text>
+  <text x="400.0" y="230.0" font-size="11" fill="#222">flat: 516.0 KB   cum: 516.0 KB</text>
+  <text x="400.0" y="246.0" font-size="10" fill="#444">sample-processor/main.go:39</text>
+</g><g>
+  <rect x="215.0" y="90.0" rx="8" ry="8" width="260.0" height="62.0" fill="#fff7ec" stroke="#888" stroke-width="1.4"/>
+  <text x="225.0" y="110.0" font-size="12" font-weight="700" fill="#111">main.runProcessor</text>
+  <text x="225.0" y="128.0" font-size="11" fill="#222">flat: 0 B   cum: 2.10 MB</text>
+  <text x="225.0" y="144.0" font-size="10" fill="#444">sample-processor/main.go:51</text>
+</g>
+</svg>

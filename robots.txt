@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Odisena Console is an internal engineering command center.
+# It contains no crawlable public content of value; indexing is neither
+# required nor blocked. Adjust the line below to `Disallow: /` if you
+# deploy behind a public URL and prefer to keep it out of search engines.
