@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0.0",
+  "artifact_family": "constellation_state",
+  "generated_at": "2026-07-05T14:59:00-04:00",
+  "generator": "manual_phase1_cutover",
+  "authority_layer": "v7",
+  "v7_declared_live_layer1": true,
+  "layer1_authority_artifact": "odisena_like_thread_merge_index_v7.md",
+  "q17": {
+    "status": "open",
+    "shapes_catalogued": 4,
+    "note": "v6-vs-v7 paradox — 4 disposition shapes catalogued, unresolved"
+  },
+  "clusters": {
+    "cluster_9": {"present": true, "role": "governance_rules"},
+    "cluster_17": {"present": true, "registration_status": "registered"},
+    "cluster_19": {"present": true, "beat_1": "closed", "beat_2": "open"}
+  },
+  "substrates": {
+    "substrate_M": {"status": "corrected"},
+    "substrate_N": {"status": "registered"},
+    "substrate_O": {"status": "pending_registration", "name": "Odisena Prompt Library"},
+    "substrate_T": {"status": "bridge_pending"}
+  },
+  "amendments": [
+    {"id": "v7-am-001", "at": "2026-07-05T10:32:00-04:00", "size_bytes": 11405},
+    {"id": "v7-am-002", "at": "2026-07-05T10:42:00-04:00", "size_bytes": 25054},
+    {"id": "v7-am-005-eqv", "at": "2026-07-05T10:44:00-04:00", "size_bytes": 24826, "note": "collision peer, renumbered"},
+    {"id": "v7-am-003", "at": "2026-07-05T10:46:00-04:00", "size_bytes": 21368},
+    {"id": "v7-am-004", "at": "2026-07-05T10:53:00-04:00", "size_bytes": 18808, "note": "V7-A1.1 catalogue CLOSED"}
+  ],
+  "open_loops": [
+    {"id": "Q17", "type": "layer1_authority_paradox"},
+    {"id": "cluster_19_beat_3", "type": "disposition_election"},
+    {"id": "substrate_O_registration", "type": "registration"},
+    {"id": "rule_M_H_binding", "type": "cross_binding"},
+    {"id": "ios_icon_v1_v2", "type": "asset_election"},
+    {"id": "propagation_loop_ABDV_pastes", "type": "disposition", "count": 65}
+  ],
+  "source_artifacts": [
+    "odisena_substrate_constellation_registry_v7.md",
+    "odisena_constellation_state_v7.json",
+    "odisena_constellation_dashboard.html.txt",
+    "odisena_constellation_status_tracker_v7.py.txt",
+    "odisena_like_thread_merge_index_v7.md"
+  ],
+  "staleness": {
+    "generated_window_hours": 4,
+    "stale_after_hours": 24,
+    "warning_after_hours": 12,
+    "current_status": "fresh"
+  },
+  "lineage": {
+    "session_uuid": "7dce9ae1-cedf-4d8d-a882-fdfb08be02e1",
+    "cutover_phase": "phase_1_read_only_panels",
+    "transition_plan": "odisena_cluster19_v7_console_transition_plan_2026-07-05.md",
+    "python_generator": "odisena_constellation_status_tracker_v7.py.txt (Phase 2 will run in CI)"
+  }
+}
