@@ -14,61 +14,149 @@
 <link rel="stylesheet" href="styles.css" />
 <style>
   /* v7 panel-specific additions; scoped to #v7-view to avoid style drift */
-  #v7-view { max-width: 960px; margin: 0 auto; padding: 16px; }
-  #v7-view .v7-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  #v7-view { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  #v7-view .v7-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 12px; flex-wrap: wrap; }
+  #v7-view .v7-header-left { display: flex; align-items: center; gap: 12px; }
   #v7-view .v7-back { text-decoration: none; padding: 8px 12px; border: 1px solid currentColor; border-radius: 8px; color: inherit; font-size: 14px; }
+  #v7-view .v7-back:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
   #v7-view h1 { margin: 0; font-size: 20px; }
   #v7-view .v7-sub { opacity: 0.7; font-size: 13px; margin-top: 4px; }
-  #v7-view .v7-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 16px; }
-  #v7-view .v7-panel { border: 1px solid rgba(128,128,128,0.25); border-radius: 12px; padding: 16px; background: rgba(128,128,128,0.04); }
+  #v7-view .v7-toolbar { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  #v7-view .v7-refresh { padding: 6px 12px; border: 1px solid currentColor; border-radius: 8px; background: transparent; color: inherit; cursor: pointer; font-size: 12px; font-weight: 500; }
+  #v7-view .v7-refresh:hover { background: rgba(128,128,128,0.08); }
+  #v7-view .v7-refresh:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+  #v7-view .v7-refresh:disabled { opacity: 0.5; cursor: wait; }
+  #v7-view .v7-last-fetched { opacity: 0.6; font-size: 11px; font-variant-numeric: tabular-nums; }
+  #v7-view .v7-authority-strip { border: 1px solid rgba(234,88,12,0.35); background: rgba(234,88,12,0.06); border-radius: 10px; padding: 10px 14px; margin: 12px 0 16px 0; font-size: 13px; }
+  #v7-view .v7-authority-strip strong { font-weight: 600; }
+  #v7-view .v7-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 4px; }
+  @media (min-width: 780px) {
+    #v7-view .v7-grid { grid-template-columns: 1fr 1fr; }
+    #v7-view .v7-panel.wide { grid-column: 1 / -1; }
+  }
+  #v7-view .v7-panel { border: 1px solid rgba(128,128,128,0.25); border-radius: 12px; padding: 16px; background: rgba(128,128,128,0.04); display: flex; flex-direction: column; }
+  #v7-view .v7-panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
   #v7-view .v7-panel h2 { margin: 0 0 4px 0; font-size: 16px; }
-  #v7-view .v7-panel .v7-panel-sub { opacity: 0.7; font-size: 12px; margin-bottom: 12px; }
-  #v7-view .v7-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed rgba(128,128,128,0.2); font-size: 14px; }
+  #v7-view .v7-panel .v7-panel-sub { opacity: 0.7; font-size: 12px; }
+  #v7-view .v7-panel-copy { background: transparent; border: 1px solid rgba(128,128,128,0.3); border-radius: 6px; padding: 3px 8px; font-size: 10px; color: inherit; cursor: pointer; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; opacity: 0.7; }
+  #v7-view .v7-panel-copy:hover { opacity: 1; background: rgba(128,128,128,0.08); }
+  #v7-view .v7-panel-copy.copied { color: #16a34a; border-color: #16a34a; }
+  #v7-view .v7-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed rgba(128,128,128,0.2); font-size: 14px; gap: 8px; }
   #v7-view .v7-row:last-child { border-bottom: none; }
-  #v7-view .v7-row .v7-key { opacity: 0.75; }
+  #v7-view .v7-row .v7-key { opacity: 0.75; flex-shrink: 0; }
   #v7-view .v7-row .v7-val { font-weight: 500; text-align: right; word-break: break-word; }
-  #v7-view .v7-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  #v7-view .v7-subgroup { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(128,128,128,0.18); }
+  #v7-view .v7-subgroup-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.75; margin-bottom: 6px; }
+  #v7-view .v7-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
   #v7-view .v7-badge.closed { background: #16a34a20; color: #16a34a; }
   #v7-view .v7-badge.open { background: #ea580c20; color: #ea580c; }
   #v7-view .v7-badge.delta-only { background: #d9770620; color: #d97706; }
   #v7-view .v7-badge.misfire-watch { background: #dc262620; color: #dc2626; }
+  #v7-view .v7-badge.active_delta_only { background: #d9770620; color: #d97706; }
+  #v7-view .v7-badge.under_surveillance { background: #dc262620; color: #dc2626; }
   #v7-view .v7-badge.fresh { background: #16a34a20; color: #16a34a; }
+  #v7-view .v7-badge.warning { background: #d9770620; color: #d97706; }
   #v7-view .v7-badge.stale { background: #dc262620; color: #dc2626; }
+  #v7-view .v7-badge.registered { background: #16a34a20; color: #16a34a; }
+  #v7-view .v7-badge.pending_registration { background: #d9770620; color: #d97706; }
+  #v7-view .v7-badge.corrected { background: #3b82f620; color: #3b82f6; }
+  #v7-view .v7-badge.bridge_pending { background: #d9770620; color: #d97706; }
   #v7-view .v7-warn { background: #fef3c7; color: #78350f; padding: 8px 12px; border-radius: 8px; font-size: 13px; margin-top: 8px; }
-  #v7-view .v7-lineage { margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(128,128,128,0.15); font-size: 11px; opacity: 0.6; }
-  #v7-view .v7-err { color: #dc2626; font-style: italic; }
+  @media (prefers-color-scheme: dark) {
+    #v7-view .v7-warn { background: #78350f30; color: #fbbf24; }
+    #v7-view .v7-authority-strip { background: rgba(234,88,12,0.12); }
+  }
+  #v7-view .v7-lineage { margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(128,128,128,0.15); font-size: 11px; opacity: 0.6; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+  #v7-view .v7-err { color: #dc2626; font-style: italic; display: block; margin-bottom: 8px; }
+  #v7-view .v7-retry { padding: 4px 10px; border: 1px solid #dc2626; border-radius: 6px; background: transparent; color: #dc2626; cursor: pointer; font-size: 12px; }
+  #v7-view .v7-retry:hover { background: #dc262610; }
   #v7-view a { color: inherit; }
+
+  /* Skeleton loading */
+  #v7-view .v7-skel { display: block; height: 14px; margin: 8px 0; border-radius: 4px; background: linear-gradient(90deg, rgba(128,128,128,0.08) 0%, rgba(128,128,128,0.18) 50%, rgba(128,128,128,0.08) 100%); background-size: 200% 100%; animation: v7skel 1.4s ease-in-out infinite; }
+  #v7-view .v7-skel.w60 { width: 60%; }
+  #v7-view .v7-skel.w80 { width: 80%; }
+  #v7-view .v7-skel.w40 { width: 40%; }
+  @keyframes v7skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* Print */
+  @media print {
+    #v7-view { max-width: none; }
+    #v7-view .v7-back, #v7-view .v7-refresh, #v7-view .v7-panel-copy, #v7-view .v7-retry { display: none; }
+    #v7-view .v7-panel { break-inside: avoid; page-break-inside: avoid; border: 1px solid #999; background: white; color: black; }
+    #v7-view .v7-skel { display: none; }
+    #v7-view .v7-authority-strip { border: 1px solid #999; background: white; color: black; }
+  }
 </style>
 </head>
 <body>
 <div id="v7-view">
   <div class="v7-header">
-    <a class="v7-back" href="./">‹ Console home</a>
-    <div style="text-align: right;">
-      <h1>v7 Infrastructure</h1>
-      <div class="v7-sub">Read-only · Phase 1 · Non-destructive</div>
+    <div class="v7-header-left">
+      <a class="v7-back" href="./" aria-label="Back to console home">‹ Console home</a>
+      <div>
+        <h1>v7 Infrastructure</h1>
+        <div class="v7-sub">Read-only · Phase 1 · Non-destructive</div>
+      </div>
+    </div>
+    <div class="v7-toolbar" role="toolbar" aria-label="Panel controls">
+      <span class="v7-last-fetched" id="v7-last-fetched" aria-live="polite"></span>
+      <button class="v7-refresh" id="v7-refresh-btn" type="button" aria-label="Refresh all panels">↻ Refresh</button>
     </div>
   </div>
 
-  <div class="v7-warn" id="v7-global-warn" style="display:none;"></div>
+  <div class="v7-authority-strip" role="note" aria-label="Authority-layer notice">
+    <strong>Authority-layer notice:</strong> This panel reflects <strong>v7</strong> as declared Layer-1. A parallel <code>odisena_like_thread_merge_index_v8.md</code> was emitted at 11:10 ET; supersession is <em>unresolved</em> pending operator election. Panel data is not auto-migrated to v8.
+  </div>
 
-  <div class="v7-grid">
-    <section class="v7-panel" id="panel-cluster19">
-      <h2>Cluster 19</h2>
-      <div class="v7-panel-sub">Beat status · marker threshold</div>
-      <div id="cluster19-body"><em>Loading…</em></div>
+  <div class="v7-grid" role="region" aria-label="v7 infrastructure panels">
+    <section class="v7-panel" id="panel-cluster19" aria-labelledby="cluster19-heading">
+      <div class="v7-panel-head">
+        <div>
+          <h2 id="cluster19-heading">Cluster 19</h2>
+          <div class="v7-panel-sub">Beat status · marker threshold</div>
+        </div>
+        <button class="v7-panel-copy" type="button" data-copy="public/data/cluster19_status.json" aria-label="Copy JSON path">📋 path</button>
+      </div>
+      <div id="cluster19-body" aria-busy="true">
+        <div class="v7-skel w80"></div>
+        <div class="v7-skel w60"></div>
+        <div class="v7-skel w40"></div>
+        <div class="v7-skel w80"></div>
+      </div>
     </section>
 
-    <section class="v7-panel" id="panel-scheduled">
-      <h2>Scheduled-task delta</h2>
-      <div class="v7-panel-sub">Active tasks vs. canonical ledger reconciliation</div>
-      <div id="scheduled-body"><em>Loading…</em></div>
+    <section class="v7-panel" id="panel-scheduled" aria-labelledby="scheduled-heading">
+      <div class="v7-panel-head">
+        <div>
+          <h2 id="scheduled-heading">Scheduled-task delta</h2>
+          <div class="v7-panel-sub">Active tasks vs. canonical ledger reconciliation</div>
+        </div>
+        <button class="v7-panel-copy" type="button" data-copy="public/data/scheduled_task_delta_status.json" aria-label="Copy JSON path">📋 path</button>
+      </div>
+      <div id="scheduled-body" aria-busy="true">
+        <div class="v7-skel w80"></div>
+        <div class="v7-skel w60"></div>
+        <div class="v7-skel w80"></div>
+        <div class="v7-skel w40"></div>
+      </div>
     </section>
 
-    <section class="v7-panel" id="panel-constellation">
-      <h2>Constellation state</h2>
-      <div class="v7-panel-sub">v7 authority · Q17 · substrates · open loops</div>
-      <div id="constellation-body"><em>Loading…</em></div>
+    <section class="v7-panel wide" id="panel-constellation" aria-labelledby="constellation-heading">
+      <div class="v7-panel-head">
+        <div>
+          <h2 id="constellation-heading">Constellation state</h2>
+          <div class="v7-panel-sub">v7 authority · Q17 · substrates · open loops</div>
+        </div>
+        <button class="v7-panel-copy" type="button" data-copy="public/data/constellation_state_v7.json" aria-label="Copy JSON path">📋 path</button>
+      </div>
+      <div id="constellation-body" aria-busy="true">
+        <div class="v7-skel w80"></div>
+        <div class="v7-skel w60"></div>
+        <div class="v7-skel w80"></div>
+        <div class="v7-skel w40"></div>
+        <div class="v7-skel w60"></div>
+      </div>
     </section>
   </div>
 
@@ -82,16 +170,46 @@
   "use strict";
   // No writes. No mutations. Fetch-only.
 
-  function stalenessLabel(s) {
+  var WARNING_HOURS = 12;
+  var STALE_HOURS = 24;
+
+  function parseISO(s) {
     if (!s) return null;
-    return s.current_status || "unknown";
+    var d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
   }
 
-  function stalenessBadge(s) {
-    var label = stalenessLabel(s);
-    if (!label) return "";
-    var cls = label === "fresh" ? "fresh" : "stale";
-    return '<span class="v7-badge ' + cls + '">' + label + '</span>';
+  function humanizeAge(iso) {
+    var d = parseISO(iso);
+    if (!d) return "unknown age";
+    var diffMs = Date.now() - d.getTime();
+    var absMin = Math.round(Math.abs(diffMs) / 60000);
+    if (absMin < 1) return "just now";
+    if (absMin < 60) return absMin + " min ago";
+    var hr = Math.round(absMin / 60 * 10) / 10;
+    if (hr < 24) return hr + " h ago";
+    var days = Math.round(hr / 24 * 10) / 10;
+    return days + " d ago";
+  }
+
+  function computedStaleness(iso) {
+    var d = parseISO(iso);
+    if (!d) return "unknown";
+    var hours = (Date.now() - d.getTime()) / 3600000;
+    if (hours >= STALE_HOURS) return "stale";
+    if (hours >= WARNING_HOURS) return "warning";
+    return "fresh";
+  }
+
+  function stalenessBadge(data) {
+    // Prefer JSON-declared status; if age has since exceeded thresholds, escalate but never downgrade.
+    var declared = data.staleness && data.staleness.current_status ? data.staleness.current_status : null;
+    var computed = computedStaleness(data.generated_at);
+    var rank = { fresh: 0, warning: 1, stale: 2, unknown: 3 };
+    var chosen = declared;
+    if (!chosen || (rank[computed] || 0) > (rank[declared] || 0)) chosen = computed;
+    var label = chosen + (data.generated_at ? " · " + humanizeAge(data.generated_at) : "");
+    return '<span class="v7-badge ' + chosen + '">' + label + "</span>";
   }
 
   function row(k, v) {
@@ -104,48 +222,62 @@
     if (data.generated_at) parts.push("Generated: " + data.generated_at);
     if (data.lineage && data.lineage.cutover_phase) parts.push(data.lineage.cutover_phase);
     if (data.authority_layer) parts.push("Authority: " + data.authority_layer);
+    if (data.lineage && data.lineage.session_uuid) parts.push("Session: " + data.lineage.session_uuid.slice(0, 8));
     return '<div class="v7-lineage">' + parts.join(" · ") + "</div>";
+  }
+
+  function safeVal(v, fallback) {
+    if (v == null || v === "") return fallback || "—";
+    return v;
   }
 
   function renderCluster19(d) {
     var html = "";
     html += row("Beat 1", '<span class="v7-badge ' + d.beat_1.status + '">' + d.beat_1.status + "</span>");
-    html += row("Beat 1 closed by", d.beat_1.closed_by || "—");
+    html += row("Beat 1 closed by", safeVal(d.beat_1.closed_by));
     html += row("Beat 1 immutable", d.beat_1.immutable ? "yes" : "no");
     html += row("Beat 2", '<span class="v7-badge ' + d.beat_2.status + '">' + d.beat_2.status + "</span>");
     html += row("Beat 2 threshold", d.beat_2.threshold + " markers");
     html += row("Beat 2 marker count", d.beat_2.marker_count == null ? "not-yet-generated" : d.beat_2.marker_count);
-    html += row("Next close condition", d.beat_2.next_close_condition);
-    html += row("Staleness", stalenessBadge(d.staleness));
+    html += row("Next close condition", safeVal(d.beat_2.next_close_condition));
+    html += row("Staleness", stalenessBadge(d));
     html += lineage(d);
-    document.getElementById("cluster19-body").innerHTML = html;
+    var el = document.getElementById("cluster19-body");
+    el.innerHTML = html;
+    el.setAttribute("aria-busy", "false");
   }
 
   function renderScheduled(d) {
     var html = "";
-    html += row("Canonical ledger status", d.canonical_ledger_status);
+    html += row("Canonical ledger status", safeVal(d.canonical_ledger_status));
     html += row("Canonical row present", d.canonical_ledger_row_present ? "yes" : "no");
     html += row("UI may mark canonical", d.guardrails && d.guardrails.ui_may_mark_canonical ? "yes" : "no (guardrail)");
     (d.tasks || []).forEach(function(t) {
-      html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(128,128,128,0.15);">';
-      html += row("Task", t.task_id + ' <span class="v7-badge ' + (t.badge || "") + '">' + (t.badge || t.state) + "</span>");
+      var badgeCls = (t.badge || t.state || "").replace(/[^a-z0-9_-]/gi, "_");
+      html += '<div class="v7-subgroup">';
+      html += '<div class="v7-subgroup-title">' + t.task_id + ' <span class="v7-badge ' + badgeCls + '">' + (t.badge || t.state) + "</span></div>";
       if (t.cadence) html += row("Cadence", t.cadence);
       if (t.purpose) html += row("Purpose", t.purpose);
       if (t.state) html += row("State", t.state);
       if ("canonical_merge_verified" in t) html += row("Canonical merge verified", t.canonical_merge_verified ? "yes" : "no");
+      if (t.notes) html += row("Notes", t.notes);
       html += "</div>";
     });
-    html += row("Staleness", stalenessBadge(d.staleness));
+    html += '<div class="v7-subgroup">' + row("Staleness", stalenessBadge(d)) + "</div>";
     html += lineage(d);
-    document.getElementById("scheduled-body").innerHTML = html;
+    var el = document.getElementById("scheduled-body");
+    el.innerHTML = html;
+    el.setAttribute("aria-busy", "false");
   }
 
   function renderConstellation(d) {
     var html = "";
     html += row("v7 declared live Layer-1", d.v7_declared_live_layer1 ? "yes" : "no");
-    html += row("Layer-1 authority artifact", d.layer1_authority_artifact || "—");
+    html += row("Layer-1 authority artifact", safeVal(d.layer1_authority_artifact));
     if (d.q17) html += row("Q17", '<span class="v7-badge ' + d.q17.status + '">' + d.q17.status + '</span> · ' + (d.q17.shapes_catalogued || 0) + " shapes");
+
     if (d.clusters) {
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Clusters</div>';
       Object.keys(d.clusters).forEach(function(k) {
         var c = d.clusters[k];
         var v = c.present ? "present" : "absent";
@@ -154,46 +286,122 @@
         if (c.role) v += " · " + c.role;
         html += row(k, v);
       });
+      html += "</div>";
     }
+
     if (d.substrates) {
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Substrates</div>';
       Object.keys(d.substrates).forEach(function(k) {
         var s = d.substrates[k];
-        html += row(k, s.status + (s.name ? " · " + s.name : ""));
+        var badgeCls = (s.status || "").replace(/[^a-z0-9_-]/gi, "_");
+        var val = '<span class="v7-badge ' + badgeCls + '">' + s.status + "</span>";
+        if (s.name) val += " · " + s.name;
+        html += row(k, val);
       });
+      html += "</div>";
     }
+
     if (d.amendments && d.amendments.length) {
-      html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(128,128,128,0.15);"><strong>Amendment stack</strong></div>';
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Amendment stack (' + d.amendments.length + ")</div>";
       d.amendments.forEach(function(a) {
         html += row(a.id, a.at + " · " + (a.size_bytes || "?") + "B" + (a.note ? " · " + a.note : ""));
       });
+      html += "</div>";
     }
+
     if (d.open_loops && d.open_loops.length) {
-      html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(128,128,128,0.15);"><strong>Open loops (' + d.open_loops.length + ')</strong></div>';
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Open loops (' + d.open_loops.length + ")</div>";
       d.open_loops.forEach(function(l) {
         html += row(l.id, l.type + (l.count ? " (" + l.count + ")" : ""));
       });
+      html += "</div>";
     }
-    html += row("Staleness", stalenessBadge(d.staleness));
+
+    html += '<div class="v7-subgroup">' + row("Staleness", stalenessBadge(d)) + "</div>";
     html += lineage(d);
-    document.getElementById("constellation-body").innerHTML = html;
+    var el = document.getElementById("constellation-body");
+    el.innerHTML = html;
+    el.setAttribute("aria-busy", "false");
   }
 
   function loadJSON(path, renderer, elId) {
-    fetch(path, { cache: "no-cache" })
+    var el = document.getElementById(elId);
+    el.setAttribute("aria-busy", "true");
+    return fetch(path, { cache: "no-cache" })
       .then(function(r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
       })
-      .then(renderer)
+      .then(function(data) {
+        renderer(data);
+        return { ok: true };
+      })
       .catch(function(err) {
-        document.getElementById(elId).innerHTML =
-          '<span class="v7-err">Failed to load: ' + err.message + "</span>";
+        el.innerHTML =
+          '<span class="v7-err" role="alert">Failed to load: ' + err.message + "</span>" +
+          '<button class="v7-retry" type="button" data-retry="' + elId + '">Retry</button>';
+        el.setAttribute("aria-busy", "false");
+        return { ok: false, err: err };
       });
   }
 
-  loadJSON("public/data/cluster19_status.json", renderCluster19, "cluster19-body");
-  loadJSON("public/data/scheduled_task_delta_status.json", renderScheduled, "scheduled-body");
-  loadJSON("public/data/constellation_state_v7.json", renderConstellation, "constellation-body");
+  var loaders = {
+    "cluster19-body": ["public/data/cluster19_status.json", renderCluster19],
+    "scheduled-body": ["public/data/scheduled_task_delta_status.json", renderScheduled],
+    "constellation-body": ["public/data/constellation_state_v7.json", renderConstellation]
+  };
+
+  function loadAll() {
+    var btn = document.getElementById("v7-refresh-btn");
+    var stamp = document.getElementById("v7-last-fetched");
+    btn.disabled = true;
+    stamp.textContent = "loading…";
+    var promises = Object.keys(loaders).map(function(elId) {
+      var pair = loaders[elId];
+      return loadJSON(pair[0], pair[1], elId);
+    });
+    Promise.all(promises).then(function() {
+      btn.disabled = false;
+      var now = new Date();
+      stamp.textContent = "fetched " + now.toLocaleTimeString();
+    });
+  }
+
+  // Retry handler (event delegation)
+  document.addEventListener("click", function(e) {
+    var t = e.target;
+    if (t && t.matches && t.matches("button.v7-retry")) {
+      var elId = t.getAttribute("data-retry");
+      var pair = loaders[elId];
+      if (pair) {
+        var el = document.getElementById(elId);
+        el.innerHTML = '<div class="v7-skel w80"></div><div class="v7-skel w60"></div><div class="v7-skel w40"></div>';
+        loadJSON(pair[0], pair[1], elId);
+      }
+    }
+    if (t && t.matches && t.matches("button.v7-panel-copy")) {
+      var path = t.getAttribute("data-copy");
+      var absolute = new URL(path, window.location.href).href;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(absolute).then(function() {
+          var original = t.textContent;
+          t.textContent = "✓ copied";
+          t.classList.add("copied");
+          setTimeout(function() {
+            t.textContent = original;
+            t.classList.remove("copied");
+          }, 1600);
+        }).catch(function() {
+          t.textContent = "✗ blocked";
+          setTimeout(function() { t.textContent = "📋 path"; }, 1600);
+        });
+      }
+    }
+  });
+
+  document.getElementById("v7-refresh-btn").addEventListener("click", loadAll);
+
+  loadAll();
 })();
 </script>
 </body>
