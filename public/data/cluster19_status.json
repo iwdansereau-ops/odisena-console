@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0.0",
+  "artifact_family": "cluster19_status",
+  "generated_at": "2026-07-05T14:59:00-04:00",
+  "generator": "manual_phase1_cutover",
+  "authority_layer": "v7",
+  "layer1_authority_artifact": "odisena_like_thread_merge_index_v7.md",
+  "beat_1": {
+    "status": "closed",
+    "closed_by": "odisena_v7_amendment_002_2026-07-05_1044ET.md",
+    "closed_at": "2026-07-05T10:44:00-04:00",
+    "immutable": true
+  },
+  "beat_2": {
+    "status": "open",
+    "marker_count": null,
+    "threshold": 17,
+    "threshold_source": "cluster19_beat_close_working_rule",
+    "last_marker_at": null,
+    "next_close_condition": "17_primary_markers_post_0905ET"
+  },
+  "source_artifacts": [
+    "odisena_v7_amendment_002_2026-07-05_1044ET.md",
+    "odisena_cluster19_rollup_collision_reading_2026-07-05_1042ET.md",
+    "odisena_infinity_brain_like_threads_bridge_2026-07-05_1046ET.md",
+    "odisena_v7_amendment_003_2026-07-05_1046ET.md"
+  ],
+  "staleness": {
+    "generated_window_hours": 4,
+    "stale_after_hours": 24,
+    "warning_after_hours": 12,
+    "current_status": "fresh"
+  },
+  "lineage": {
+    "session_uuid": "7dce9ae1-cedf-4d8d-a882-fdfb08be02e1",
+    "cutover_phase": "phase_1_read_only_panels",
+    "transition_plan": "odisena_cluster19_v7_console_transition_plan_2026-07-05.md"
+  },
+  "notes": "Beat 1 immutable — do not allow browser writes. Beat 2 marker_count intentionally null until CI generator is wired in Phase 2."
+}

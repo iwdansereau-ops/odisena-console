@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)" />
+<meta name="description" content="Odisena Console — v7 infrastructure read-only panels (Cluster 19, scheduled-task delta, constellation state)." />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<link rel="icon" type="image/png" href="icons/icon-192.png" />
+<link rel="icon" type="image/svg+xml" href="icons/favicon.svg" />
+<title>Odisena Console — v7 Infrastructure</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  /* v7 panel-specific additions; scoped to #v7-view to avoid style drift */
+  #v7-view { max-width: 960px; margin: 0 auto; padding: 16px; }
+  #v7-view .v7-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  #v7-view .v7-back { text-decoration: none; padding: 8px 12px; border: 1px solid currentColor; border-radius: 8px; color: inherit; font-size: 14px; }
+  #v7-view h1 { margin: 0; font-size: 20px; }
+  #v7-view .v7-sub { opacity: 0.7; font-size: 13px; margin-top: 4px; }
+  #v7-view .v7-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 16px; }
+  #v7-view .v7-panel { border: 1px solid rgba(128,128,128,0.25); border-radius: 12px; padding: 16px; background: rgba(128,128,128,0.04); }
+  #v7-view .v7-panel h2 { margin: 0 0 4px 0; font-size: 16px; }
+  #v7-view .v7-panel .v7-panel-sub { opacity: 0.7; font-size: 12px; margin-bottom: 12px; }
+  #v7-view .v7-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed rgba(128,128,128,0.2); font-size: 14px; }
+  #v7-view .v7-row:last-child { border-bottom: none; }
+  #v7-view .v7-row .v7-key { opacity: 0.75; }
+  #v7-view .v7-row .v7-val { font-weight: 500; text-align: right; word-break: break-word; }
+  #v7-view .v7-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  #v7-view .v7-badge.closed { background: #16a34a20; color: #16a34a; }
+  #v7-view .v7-badge.open { background: #ea580c20; color: #ea580c; }
+  #v7-view .v7-badge.delta-only { background: #d9770620; color: #d97706; }
+  #v7-view .v7-badge.misfire-watch { background: #dc262620; color: #dc2626; }
+  #v7-view .v7-badge.fresh { background: #16a34a20; color: #16a34a; }
+  #v7-view .v7-badge.stale { background: #dc262620; color: #dc2626; }
+  #v7-view .v7-warn { background: #fef3c7; color: #78350f; padding: 8px 12px; border-radius: 8px; font-size: 13px; margin-top: 8px; }
+  #v7-view .v7-lineage { margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(128,128,128,0.15); font-size: 11px; opacity: 0.6; }
+  #v7-view .v7-err { color: #dc2626; font-style: italic; }
+  #v7-view a { color: inherit; }
+</style>
+</head>
+<body>
+<div id="v7-view">
+  <div class="v7-header">
+    <a class="v7-back" href="./">‹ Console home</a>
+    <div style="text-align: right;">
+      <h1>v7 Infrastructure</h1>
+      <div class="v7-sub">Read-only · Phase 1 · Non-destructive</div>
+    </div>
+  </div>
+
+  <div class="v7-warn" id="v7-global-warn" style="display:none;"></div>
+
+  <div class="v7-grid">
+    <section class="v7-panel" id="panel-cluster19">
+      <h2>Cluster 19</h2>
+      <div class="v7-panel-sub">Beat status · marker threshold</div>
+      <div id="cluster19-body"><em>Loading…</em></div>
+    </section>
+
+    <section class="v7-panel" id="panel-scheduled">
+      <h2>Scheduled-task delta</h2>
+      <div class="v7-panel-sub">Active tasks vs. canonical ledger reconciliation</div>
+      <div id="scheduled-body"><em>Loading…</em></div>
+    </section>
+
+    <section class="v7-panel" id="panel-constellation">
+      <h2>Constellation state</h2>
+      <div class="v7-panel-sub">v7 authority · Q17 · substrates · open loops</div>
+      <div id="constellation-body"><em>Loading…</em></div>
+    </section>
+  </div>
+
+  <div class="v7-lineage" style="margin-top: 24px; text-align: center;">
+    Transition plan · Phase 1 · odisena_cluster19_v7_console_transition_plan_2026-07-05.md
+  </div>
+</div>
+
+<script>
+(function() {
+  "use strict";
+  // No writes. No mutations. Fetch-only.
+
+  function stalenessLabel(s) {
+    if (!s) return null;
+    return s.current_status || "unknown";
+  }
+
+  function stalenessBadge(s) {
+    var label = stalenessLabel(s);
+    if (!label) return "";
+    var cls = label === "fresh" ? "fresh" : "stale";
+    return '<span class="v7-badge ' + cls + '">' + label + '</span>';
+  }
+
+  function row(k, v) {
+    return '<div class="v7-row"><span class="v7-key">' + k + '</span><span class="v7-val">' + v + '</span></div>';
+  }
+
+  function lineage(data) {
+    if (!data.lineage && !data.generated_at) return "";
+    var parts = [];
+    if (data.generated_at) parts.push("Generated: " + data.generated_at);
+    if (data.lineage && data.lineage.cutover_phase) parts.push(data.lineage.cutover_phase);
+    if (data.authority_layer) parts.push("Authority: " + data.authority_layer);
+    return '<div class="v7-lineage">' + parts.join(" · ") + "</div>";
+  }
+
+  function renderCluster19(d) {
+    var html = "";
+    html += row("Beat 1", '<span class="v7-badge ' + d.beat_1.status + '">' + d.beat_1.status + "</span>");
+    html += row("Beat 1 closed by", d.beat_1.closed_by || "—");
+    html += row("Beat 1 immutable", d.beat_1.immutable ? "yes" : "no");
+    html += row("Beat 2", '<span class="v7-badge ' + d.beat_2.status + '">' + d.beat_2.status + "</span>");
+    html += row("Beat 2 threshold", d.beat_2.threshold + " markers");
+    html += row("Beat 2 marker count", d.beat_2.marker_count == null ? "not-yet-generated" : d.beat_2.marker_count);
+    html += row("Next close condition", d.beat_2.next_close_condition);
+    html += row("Staleness", stalenessBadge(d.staleness));
+    html += lineage(d);
+    document.getElementById("cluster19-body").innerHTML = html;
+  }
+
+  function renderScheduled(d) {
+    var html = "";
+    html += row("Canonical ledger status", d.canonical_ledger_status);
+    html += row("Canonical row present", d.canonical_ledger_row_present ? "yes" : "no");
+    html += row("UI may mark canonical", d.guardrails && d.guardrails.ui_may_mark_canonical ? "yes" : "no (guardrail)");
+    (d.tasks || []).forEach(function(t) {
+      html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(128,128,128,0.15);">';
+      html += row("Task", t.task_id + ' <span class="v7-badge ' + (t.badge || "") + '">' + (t.badge || t.state) + "</span>");
+      if (t.cadence) html += row("Cadence", t.cadence);
+      if (t.purpose) html += row("Purpose", t.purpose);
+      if (t.state) html += row("State", t.state);
+      if ("canonical_merge_verified" in t) html += row("Canonical merge verified", t.canonical_merge_verified ? "yes" : "no");
+      html += "</div>";
+    });
+    html += row("Staleness", stalenessBadge(d.staleness));
+    html += lineage(d);
+    document.getElementById("scheduled-body").innerHTML = html;
+  }
+
+  function renderConstellation(d) {
+    var html = "";
+    html += row("v7 declared live Layer-1", d.v7_declared_live_layer1 ? "yes" : "no");
+    html += row("Layer-1 authority artifact", d.layer1_authority_artifact || "—");
+    if (d.q17) html += row("Q17", '<span class="v7-badge ' + d.q17.status + '">' + d.q17.status + '</span> · ' + (d.q17.shapes_catalogued || 0) + " shapes");
+    if (d.clusters) {
+      Object.keys(d.clusters).forEach(function(k) {
+        var c = d.clusters[k];
+        var v = c.present ? "present" : "absent";
+        if (c.beat_1 || c.beat_2) v += " · b1:" + c.beat_1 + " b2:" + c.beat_2;
+        if (c.registration_status) v += " · " + c.registration_status;
+        if (c.role) v += " · " + c.role;
+        html += row(k, v);
+      });
+    }
+    if (d.substrates) {
+      Object.keys(d.substrates).forEach(function(k) {
+        var s = d.substrates[k];
+        html += row(k, s.status + (s.name ? " · " + s.name : ""));
+      });
+    }
+    if (d.amendments && d.amendments.length) {
+      html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(128,128,128,0.15);"><strong>Amendment stack</strong></div>';
+      d.amendments.forEach(function(a) {
+        html += row(a.id, a.at + " · " + (a.size_bytes || "?") + "B" + (a.note ? " · " + a.note : ""));
+      });
+    }
+    if (d.open_loops && d.open_loops.length) {
+      html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(128,128,128,0.15);"><strong>Open loops (' + d.open_loops.length + ')</strong></div>';
+      d.open_loops.forEach(function(l) {
+        html += row(l.id, l.type + (l.count ? " (" + l.count + ")" : ""));
+      });
+    }
+    html += row("Staleness", stalenessBadge(d.staleness));
+    html += lineage(d);
+    document.getElementById("constellation-body").innerHTML = html;
+  }
+
+  function loadJSON(path, renderer, elId) {
+    fetch(path, { cache: "no-cache" })
+      .then(function(r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(renderer)
+      .catch(function(err) {
+        document.getElementById(elId).innerHTML =
+          '<span class="v7-err">Failed to load: ' + err.message + "</span>";
+      });
+  }
+
+  loadJSON("public/data/cluster19_status.json", renderCluster19, "cluster19-body");
+  loadJSON("public/data/scheduled_task_delta_status.json", renderScheduled, "scheduled-body");
+  loadJSON("public/data/constellation_state_v7.json", renderConstellation, "constellation-body");
+})();
+</script>
+</body>
+</html>
