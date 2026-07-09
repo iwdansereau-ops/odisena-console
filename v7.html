@@ -434,11 +434,22 @@
     var html = "";
     html += row("Registry", safeVal(d.registry_name) + " v" + safeVal(d.registry_version, "?"));
     html += row("Modules", (d.modules || []).length);
+    var summary = d.lineage && d.lineage.registry_summary ? d.lineage.registry_summary : null;
+    if (summary) {
+      html += row("Mix", (summary.production_ready || 0) + " production_ready · " + (summary.seeded || 0) + " seeded" + (summary.blocked ? " · " + summary.blocked + " blocked" : "") + " · " + (summary.envelope_compatible || 0) + " envelope-compatible");
+    }
     (d.modules || []).forEach(function(m) {
       var statusCls = (m.status || "").replace(/[^a-z0-9_-]/gi, "_");
       html += '<div class="v7-subgroup"><div class="v7-subgroup-title">' + safeVal(m.module_name, m.module_id) + ' <span class="v7-badge ' + statusCls + '">' + safeVal(m.latest_status_label, m.status) + "</span></div>";
+      if (m.module_type) html += row("Type", m.module_type);
       if (m.custom_skill) html += row("Skill", m.custom_skill.name + " v" + m.custom_skill.version);
       if (m.source_bundle) html += row("Source bundle", safeVal(m.source_bundle.delivery_date) + " · " + (m.source_bundle.components || []).length + " components");
+      if (m.intended_repo_path) html += row("Target repo", m.intended_repo_path);
+      if (m.source_archive && m.source_archive.name) html += row("Source archive", safeVal(m.source_archive.name) + (m.source_archive.storage_note ? " · " + m.source_archive.storage_note : ""));
+      if (m.docs_bundle) {
+        var docsCount = Array.isArray(m.docs_bundle) ? m.docs_bundle.length : Object.keys(m.docs_bundle).length;
+        html += row("Docs bundle", docsCount + " linked files");
+      }
       if (m.eval) {
         if (m.eval.latest_run_at) {
           html += row("Eval", m.eval.pass_count + "/" + m.eval.total_count + " · " + safeVal(m.eval.latest_run_at));
@@ -446,11 +457,18 @@
           html += row("Scan", m.eval.latest_scan_at ? (m.eval.latest_pass_count + "/" + m.eval.latest_total_count + " · " + safeVal(m.eval.latest_scan_at)) : "pre-first-run (seeded)");
         }
       }
+      if (m.generation_time_validation && m.generation_time_validation.tests) {
+        html += row("Gen-time tests", safeVal(m.generation_time_validation.tests));
+      }
       if (m.scheduled_health) html += row("Next health check", safeVal(m.scheduled_health.next_run) + " (task " + m.scheduled_health.task_id + ")");
       if (m.response_contract) html += row("Envelope compatible", m.response_contract.structured_envelope_compatible ? "yes" : "no");
       if (m.drift_rules && m.drift_rules.length) html += row("Drift rules", m.drift_rules.length + " (" + m.drift_rules.filter(function(r){return r.severity==="CRITICAL";}).length + " CRITICAL, " + m.drift_rules.filter(function(r){return r.severity==="WARN";}).length + " WARN)");
+      if (m.next_action) html += row("Next action", safeVal(m.next_action));
       html += "</div>";
     });
+    if (d.source_of_truth_note) {
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Source-of-truth note</div>' + row("Note", safeVal(d.source_of_truth_note)) + "</div>";
+    }
     html += '<div class="v7-subgroup">' + row("Staleness", stalenessBadge(d)) + "</div>";
     html += lineage(d);
     var el = document.getElementById("llm-registry-body");
