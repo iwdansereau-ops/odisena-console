@@ -421,6 +421,25 @@
       html += "</div>";
     }
 
+    if (d.v8_amendments) {
+      var v8 = d.v8_amendments;
+      var ords = v8.sibling_ordinals_since_v8am036 || [];
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">v8 amendment chain (ceiling ' + safeVal(v8.ceiling) + ', ' + ords.length + ' since v8-am-036)</div>';
+      if (v8.authored_this_thread && v8.authored_this_thread.length) {
+        html += row("This-thread", v8.authored_this_thread.join(", "));
+      }
+      if (v8.predecessor_anchor && v8.predecessor_anchor.id) {
+        html += row("Predecessor anchor", v8.predecessor_anchor.id + " · " + safeVal(v8.predecessor_anchor.topic));
+      }
+      ords.forEach(function(a) {
+        var localityCls = (a.locality || "").replace(/[^a-z0-9_-]/gi, "_");
+        html += row(a.id, '<span class="v7-badge ' + localityCls + '">' + safeVal(a.locality) + "</span> " + safeVal(a.at) + " · " + safeVal(a.topic));
+      });
+      if (v8.next_free_ordinal) html += row("Next free", v8.next_free_ordinal);
+      if (v8.safety_boundary) html += row("Safety boundary", v8.safety_boundary);
+      html += "</div>";
+    }
+
     html += '<div class="v7-subgroup">' + row("Staleness", stalenessBadge(d)) + "</div>";
     html += lineage(d);
     var el = document.getElementById("constellation-body");
@@ -464,6 +483,15 @@
       if (m.next_action) html += row("Next action", safeVal(m.next_action));
       html += "</div>";
     });
+    if (d.space_registry_status) {
+      var srs = d.space_registry_status;
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Space registry status</div>';
+      html += row("Space version", safeVal(srs.space_registry_version) + " · " + safeVal(srs.space_updated_at));
+      html += row("Console mirror", "v" + safeVal(d.registry_version) + " (module content identical)");
+      if (srs.module_content_delta) html += row("Content delta", safeVal(srs.module_content_delta));
+      if (srs.reconciliation_report) html += row("Reconciliation", safeVal(srs.reconciliation_report));
+      html += "</div>";
+    }
     if (d.source_of_truth_note) {
       html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Source-of-truth note</div>' + row("Note", safeVal(d.source_of_truth_note)) + "</div>";
     }
@@ -491,6 +519,24 @@
     html += row("Engineering template", safeVal(d.engineering_template_id));
     if (d.revision) {
       html += row("Revision", safeVal(d.revision) + (d.product_line_authority ? " · " + d.product_line_authority : ""));
+    }
+    if (d.revision_header) {
+      html += row("Header", d.revision_header);
+    }
+    if (typeof d.distribution_log_entries === "number") {
+      html += row("Distribution log", d.distribution_log_entries + " entries");
+    }
+    if (d.revision_lineage && d.revision_lineage.length) {
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Revision lineage (' + d.revision_lineage.length + ')</div>';
+      d.revision_lineage.forEach(function(r) {
+        var label = "rev " + safeVal(r.revision) + (r.date ? " · " + r.date : "");
+        var val = safeVal(r.scope) + (r.amendment ? " · " + r.amendment : "") + (r.supersedes ? " · supersedes " + r.supersedes.join(", ") : "");
+        html += row(label, val);
+      });
+      html += "</div>";
+    }
+    if (d.superseded_snapshots && d.superseded_snapshots.length) {
+      html += row("Superseded snapshots", d.superseded_snapshots.length + " (historical)");
     }
     if (d.canonical_reference_boards && d.canonical_reference_boards.length) {
       html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Canonical reference boards</div>';

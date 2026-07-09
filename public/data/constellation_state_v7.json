@@ -67,5 +67,24 @@
     "status": "passed",
     "observed_at": "2026-07-08T22:51:00-04:00",
     "note": "Delaware C-corp formation gate has fired. Downgrade cascade is now operator-firable at any time."
+  },
+  "v8_amendments": {
+    "ceiling": "v8-am-041",
+    "authored_this_thread": ["v8-am-024", "v8-am-025", "v8-am-026", "v8-am-037"],
+    "predecessor_anchor": {
+      "id": "v8-am-036",
+      "at": "2026-07-08T23:05:00-04:00",
+      "topic": "Civic Ark sellable product set"
+    },
+    "sibling_ordinals_since_v8am036": [
+      {"id": "v8-am-037", "at": "2026-07-09T01:57:00-04:00", "locality": "this-thread", "topic": "Provisional Reading W · Kernel §2 Continue-clause glyph codification", "status": "LIVE"},
+      {"id": "v8-am-038", "at": "2026-07-09T02:04:00-04:00", "locality": "adjacent-thread", "topic": "Omnibus F.1–F.9 doctrine codification", "status": "LIVE"},
+      {"id": "v8-am-039", "at": "2026-07-09T02:08:00-04:00", "locality": "adjacent-thread", "topic": "Reading V co-codification · multi-reading canonical glyph doctrine", "status": "LIVE"},
+      {"id": "v8-am-040", "at": "2026-07-09T02:26:00-04:00", "locality": "adjacent-thread", "topic": "E.2 pure-glyph wire classification", "status": "LIVE"},
+      {"id": "v8-am-041", "at": "2026-07-09T02:29:00-04:00", "locality": "adjacent-thread", "topic": "A.3 resolved by E.2 disposition", "status": "LIVE"}
+    ],
+    "reconciliation_authority": "odisena_ordinal_reconciliation_v8am037_live_2026-07-09_0200ET.md",
+    "next_free_ordinal": "v8-am-042 (unallocated)",
+    "safety_boundary": "IDs and one-line topics only. NO doctrine bodies, NO Reading V/W/X internals, NO clause bodies, NO glyph tables. Cross-thread merge index is Layer-1 anchor odisena_like_thread_merge_index_v8.md."
   }
 }
