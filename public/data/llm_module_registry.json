@@ -4,7 +4,16 @@
   "generated_at": "2026-07-09T01:49:00-04:00",
   "generator": "manual_phase1_cross_thread_enhancement_v1_2_bump",
   "source_of_truth": "odisena_openai_responses_registry_patch_report_2026-07-09_0144ET.md + odisena_llm_module_registry_status_dashboard_2026-07-09_0146ET.md",
-  "source_of_truth_note": "Space llm_module_registry.json JSON file is still at v1.0 (Rosetta only) as of 2026-07-09 01:49 ET. Console mirror leads the Space JSON per authoritative sibling reports at 2026-07-09 01:44 and 01:46 ET which specify registry_version 1.2 with three modules. Space JSON reconciliation is a held sibling-thread action.",
+  "source_of_truth_note": "As of 2026-07-09 02:32 ET the Space llm_module_registry.json has been reconciled to registry_version 1.4 per odisena_llm_module_registry_console_mirror_reconciliation_2026-07-09_0158ET.md. Space now leads the console mirror by two revisions (1.2 mirror content + 1.3 dashboard self-link + 1.4 console-mirror reconciliation metadata). Structural module content between Space v1.4 and console v1.2 is IDENTICAL — Space v1.3/v1.4 revisions added update_policy metadata and canonical_files back-pointers only. Space registry status tracked in space_registry_status block.",
+  "space_registry_status": {
+    "space_registry_version": "1.4",
+    "space_updated_at": "2026-07-09T01:58:00-04:00",
+    "reconciliation_report": "odisena_llm_module_registry_console_mirror_reconciliation_2026-07-09_0158ET.md",
+    "dashboard_self_link_patch": "odisena_llm_module_registry_dashboard_link_patch_report_2026-07-09_0150ET.md",
+    "console_pr8_report_registered_in_space": "odisena_console_pr8_llm_registry_v1_2_2026-07-09_0205ET.md",
+    "module_content_delta": "none — Space v1.3/v1.4 revisions are metadata-only (update_policy + canonical_files back-pointers)",
+    "next_action": "Optional future patch: mirror the update_policy.console_mirror_report_space back-pointer into this file for symmetry (currently held pending operator directive)."
+  },
   "source_generated_at": "2026-07-08T22:36:00-04:00",
   "source_updated_at": "2026-07-09T05:44:00Z",
   "registry_name": "Odisena LLM Module Registry",
