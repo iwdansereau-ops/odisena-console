@@ -1,0 +1,82 @@
+# =============================================================================
+# Odisena Netlify CI/CD — per-repo configuration
+# =============================================================================
+# Commit this file at the repo root as `odisena-deploy.yml`.
+# It standardizes site identity, build settings, custom domain, and Slack
+# notification behavior for the shared workflow at
+# .github/workflows/odisena-netlify-deploy.yml
+#
+# This file contains NO secrets. Site tokens, auth tokens, and webhook URLs
+# always live in GitHub repo/organization Secrets — never in this file.
+# See README.md for the full secrets/variables setup.
+# =============================================================================
+
+# Human-readable name for this site, used in Slack messages and step summaries.
+site_name: "Odisena Console"
+
+# Netlify team (account) slug the site belongs to. Optional — informational,
+# used in generated links like https://app.netlify.com/sites/<site>/deploys.
+# Find it in Netlify: Team settings > General > Team slug.
+team_slug: "i-w-dansereau"
+
+# Custom domain expected to serve this site once DNS/SSL are configured.
+# Leave blank ("") if the repo only uses the default *.netlify.app domain.
+# This is used ONLY to poll readiness/report status — the workflow never
+# creates, changes, or deletes DNS records.
+custom_domain: "console.odisena.com"
+
+# --- Build configuration -----------------------------------------------------
+# Leave build_command empty for static/no-build repos (e.g. Odisena Console).
+# Example for a build-based repo: "npm ci && npm run build"
+build_command: ""
+
+# Directory that gets deployed to Netlify. For no-build static repos this is
+# usually "." (repo root). For frameworks it's typically "dist", "build",
+# "out", or "public".
+publish_dir: "."
+
+# Optional: command run before build_command to install dependencies.
+# Leave empty to skip (useful for static repos with no package.json).
+install_command: ""
+
+# Optional: command run to test/lint before deploying. Leave empty to skip.
+# If it exits non-zero, the deploy is aborted.
+test_command: ""
+
+# --- Node -------------------------------------------------------------------
+node_version: "20"
+
+# --- Custom domain / SSL readiness checks ------------------------------------
+# The workflow will poll `https://<custom_domain>` for a valid TLS response
+# after a production deploy, but ONLY if custom_domain is non-empty.
+# It never attempts to change DNS or force certificate issuance — Netlify
+# provisions Let's Encrypt certificates automatically once DNS correctly
+# points at Netlify. If DNS/SSL isn't ready yet, the workflow reports a
+# clear warning (does not fail the deploy itself) so the site owner can
+# finish DNS setup in GoDaddy/Netlify without blocking main-branch deploys.
+domain_check:
+  enabled: true
+  max_attempts: 5
+  wait_seconds: 20
+  # If true, a failed/incomplete DNS+SSL check fails the whole workflow run.
+  # If false (default), it only prints a warning + GitHub step summary note.
+  fail_workflow_on_not_ready: false
+
+# --- Slack notifications ------------------------------------------------------
+slack:
+  enabled: true
+  # Channel name shown in the message only (actual routing is controlled by
+  # which webhook/channel the SLACK_WEBHOOK_URL secret is bound to in Slack).
+  channel: "#odisena-deployments"
+  notify_on:
+    production_success: true
+    production_failure: true
+    preview_success: true
+    preview_failure: false
+
+# --- Environment/context notes -----------------------------------------------
+# Any repo-specific notes for humans reading this file. Not used by the
+# workflow directly.
+notes: >
+  Odisena Console is a static, no-build PWA. build_command is intentionally
+  empty and publish_dir is "." — netlify deploy uploads the repo root as-is.

@@ -1,0 +1,44 @@
+# =============================================================================
+# Odisena — example netlify.toml
+# =============================================================================
+# Copy to `netlify.toml` at the repo root and adjust per repo. This file is
+# safe to commit — it contains no secrets, only build/deploy configuration.
+#
+# Netlify docs: netlify.toml lets you configure per-context build settings
+# (production, deploy-preview, branch-deploy) and is the recommended way to
+# keep build behavior versioned alongside the code.
+# =============================================================================
+
+[build]
+  # Leave empty for static/no-build repos like Odisena Console.
+  command = ""
+  publish = "."
+
+# Production context: applies to deploys of the site's production branch
+# (normally "main"). Netlify docs: the production branch is the branch used
+# to build and deploy changes to the site's main URL.
+[context.production]
+  command = ""
+
+# Deploy Previews: applies to deploys generated from pull requests.
+[context.deploy-preview]
+  command = ""
+
+# Branch deploys: applies to deploys from any non-production branch pushed
+# to the repo (when automatic branch deploys are enabled on the Netlify
+# site, or when triggered manually via `netlify deploy --alias`).
+[context.branch-deploy]
+  command = ""
+
+# Optional: uncomment and adjust if this repo needs custom headers.
+# [[headers]]
+#   for = "/*"
+#   [headers.values]
+#     X-Frame-Options = "DENY"
+#     X-Content-Type-Options = "nosniff"
+
+# Optional: redirects/rewrites, e.g. SPA fallback.
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200
