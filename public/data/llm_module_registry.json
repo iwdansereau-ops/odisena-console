@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0.0",
+  "artifact_family": "llm_module_registry_mirror",
+  "generated_at": "2026-07-08T22:51:00-04:00",
+  "generator": "manual_phase1_cross_thread_enhancement",
+  "source_of_truth": "llm_module_registry.json (Space)",
+  "source_generated_at": "2026-07-08T22:36:00-04:00",
+  "source_updated_at": "2026-07-09T02:39:00Z",
+  "registry_name": "Odisena LLM Module Registry",
+  "registry_version": "1.0",
+  "modules": [
+    {
+      "module_id": "rosetta_alignment_console",
+      "module_name": "Rosetta Alignment Console",
+      "module_type": "scholarly_dashboard_llm",
+      "status": "production_ready",
+      "latest_status_label": "PASS",
+      "custom_skill": {
+        "name": "rosetta-alignment-llm",
+        "skill_id": "2be6dca5-289f-4457-be8e-0eec5c944099",
+        "version": "1.1",
+        "scope": "user",
+        "latest_source": "rosetta_alignment_llm_skill_v1_1_2026-07-08.md"
+      },
+      "eval": {
+        "latest_run_at": "2026-07-09T02:39:00Z",
+        "pass_count": 10,
+        "fail_count": 0,
+        "total_count": 10,
+        "failed_ids": [],
+        "report_space": "odisena_rosetta_llm_full_eval_report_v1_1_2026-07-08.md",
+        "results_space": "odisena_rosetta_llm_full_eval_results_v1_1_2026-07-08.json"
+      },
+      "scheduled_health": {
+        "task_id": "19dba1c0",
+        "task_name": "Monthly Rosetta dashboard archival-health check",
+        "cadence": "First Monday monthly at 1300 UTC (09:00 ET during EDT)",
+        "next_run": "2026-08-03T09:00:00-04:00",
+        "post_health_eval_gate": true,
+        "registry_update_after_eval": true
+      },
+      "response_contract": {
+        "structured_envelope_compatible": true,
+        "envelope_schema_space": "odisena_openai_responses_envelope_schema_2026-07-08.json"
+      },
+      "core_safeguards": [
+        "manifest_first_source_policy",
+        "confirmed_404_only_link_scoring",
+        "no_invented_hieroglyphic_or_demotic_glyph_text",
+        "preserve_representation_type_caveats",
+        "print_readiness_preservation",
+        "structured_output_advisory_without_policy_gate"
+      ]
+    }
+  ],
+  "registry_governance": {
+    "side_effect_rule": "The registry is an operational index only. It must not itself trigger production side effects.",
+    "artifact_rule": "Never store secrets, auth headers, prompts, or completions in this registry.",
+    "status_rule": "A module is production_ready only when its latest eval passes, its source manifest is valid, and no blocking scheduled-health issue is open."
+  },
+  "staleness": {
+    "stale_after_hours": 168,
+    "warning_after_hours": 72,
+    "current_status": "fresh"
+  },
+  "lineage": {
+    "authoring_thread": "Rosetta LLM update-and-enhance v1.1 (2026-07-08)",
+    "patched_by": "task_patch_registry_update_2026-07-08.md",
+    "post_patch_eval": "PASS 10/10 at 2026-07-09T02:39:00Z"
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0.0",
+  "artifact_family": "visual_bible_asset_register_mirror",
+  "generated_at": "2026-07-08T22:51:00-04:00",
+  "generator": "manual_phase1_cross_thread_enhancement",
+  "source_of_truth": "odisena_visual_bible_asset_register_2026-07-08.xlsx",
+  "revision": "1.0",
+  "engineering_template_id": "ODS-ENG-TEMPLATE-1.0",
+  "engineering_template_source": "odisena_atn_engineering_style_guide_2026-07-08.md",
+  "summary": {
+    "total_assets": 30,
+    "active": 16,
+    "canonical": 3,
+    "rebuilt_rev_2": 8,
+    "patched": 1,
+    "retired": 2,
+    "layer_counts": {
+      "engineering": 19,
+      "mythic": 4,
+      "ops": 7
+    }
+  },
+  "canonical_reference_boards": [
+    {"asset_id": "ODS-VB-005", "board_id": "8BC199CA", "title": "ATN Dashboard UI", "role": "style_guide_reference"},
+    {"asset_id": "ODS-VB-006", "board_id": "AE0BDA50", "title": "ATN System Architecture", "role": "style_guide_reference"},
+    {"asset_id": "ODS-VB-011", "board_id": "58CE0317", "title": "Helios One Master Plan Rev 1.0", "role": "canonical_helios"}
+  ],
+  "rebuilt_rev_2_boards": [
+    {"asset_id": "ODS-VB-002", "title": "VITURE Test Trailer v1", "layer": "ops"},
+    {"asset_id": "ODS-VB-013", "title": "Helios One Urban Wellness Spine", "layer": "engineering"},
+    {"asset_id": "ODS-VB-014", "title": "Winfield Integrated Urban Biosphere v1.1", "layer": "engineering"},
+    {"asset_id": "ODS-VB-015", "title": "Helios One City-Scale Defensive Grid v1.0", "layer": "engineering"},
+    {"asset_id": "ODS-VB-016", "title": "The Fountain of Ascension Psyche-Stabilizer v1", "layer": "mythic_engineering"},
+    {"asset_id": "ODS-VB-017", "title": "Flourishing Five Lights lantern stack", "layer": "mythic"},
+    {"asset_id": "ODS-VB-018", "title": "Solar Heat Pump Water Tower", "layer": "engineering"},
+    {"asset_id": "ODS-VB-020", "title": "Emoji Language Locked Reusable Commands", "layer": "ops"}
+  ],
+  "retired_boards": [
+    {"asset_id": "ODS-VB-012", "reason": "superseded by canonical Helios One Rev 1.0 (ODS-VB-011)"},
+    {"asset_id": "ODS-VB-030", "reason": "byte-identical duplicate of ODS-VB-003"}
+  ],
+  "distribution_log": [
+    {"date": "2026-07-08", "channel": "Zip archive", "artifact": "OdisenaRebuiltBoards_2026-07-08.zip", "size_mb": 20},
+    {"date": "2026-07-08", "channel": "Google Photos album", "artifact": "Odisena Visual Bible Rebuilt Boards Rev 2.0"},
+    {"date": "2026-07-08", "channel": "Google Drive", "artifact": "OdisenaRebuiltBoards_2026-07-08.zip"}
+  ],
+  "engineering_layer_conventions": {
+    "voice": "calm_declarative_instrument_grade",
+    "palette_bg": "#0A0E14",
+    "palette_panel": "#10161F",
+    "palette_border": "#2A3644",
+    "palette_accent": "#4DA6FF",
+    "status_vocabulary": ["HEALTHY", "PASS", "WARNING", "DEGRADED", "FAIL", "N/A"],
+    "footer_badges": ["RUGGED", "SECURE", "RESILIENT", "MODULAR"]
+  },
+  "staleness": {
+    "stale_after_hours": 336,
+    "warning_after_hours": 168,
+    "current_status": "fresh"
+  }
+}
