@@ -55,5 +55,17 @@
     "cutover_phase": "phase_1_read_only_panels",
     "transition_plan": "odisena_cluster19_v7_console_transition_plan_2026-07-05.md",
     "python_generator": "odisena_constellation_status_tracker_v7.py.txt (Phase 2 will run in CI)"
+  },
+  "supersession": {
+    "note": "v7 preserved as historical peer under kernel §8. Sole live Layer-1 is v8 as of 2026-07-05T11:06 ET (ratified 11:18 ET).",
+    "v8_authority_artifact": "odisena_like_thread_merge_index_v8.md",
+    "ratification_instrument": "odisena_v7_to_v8_supersession_ratification_2026-07-05_1118ET.md",
+    "v8_oq16_status": "partial — this file remains the v7 mirror; full v8 mirror regen held for operator election"
+  },
+  "formation_gate": {
+    "gate_time": "2026-07-06T08:00:00-04:00",
+    "status": "passed",
+    "observed_at": "2026-07-08T22:51:00-04:00",
+    "note": "Delaware C-corp formation gate has fired. Downgrade cascade is now operator-firable at any time."
   }
 }
