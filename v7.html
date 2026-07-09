@@ -441,9 +441,16 @@
     html += row("Rebuilt Rev 2.0", s.rebuilt_rev_2 || 0);
     html += row("Patched / Retired", (s.patched || 0) + " / " + (s.retired || 0));
     if (s.layer_counts) {
-      html += row("Layer counts", "eng " + (s.layer_counts.engineering || 0) + " · myth " + (s.layer_counts.mythic || 0) + " · ops " + (s.layer_counts.ops || 0));
+      var layerStr = "eng " + (s.layer_counts.engineering || 0) + " · myth " + (s.layer_counts.mythic || 0) + " · ops " + (s.layer_counts.ops || 0);
+      if (typeof s.layer_counts.sales === "number") {
+        layerStr += " · sales " + s.layer_counts.sales;
+      }
+      html += row("Layer counts", layerStr);
     }
     html += row("Engineering template", safeVal(d.engineering_template_id));
+    if (d.revision) {
+      html += row("Revision", safeVal(d.revision) + (d.product_line_authority ? " · " + d.product_line_authority : ""));
+    }
     if (d.canonical_reference_boards && d.canonical_reference_boards.length) {
       html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Canonical reference boards</div>';
       d.canonical_reference_boards.forEach(function(b) {
@@ -456,6 +463,17 @@
       d.rebuilt_rev_2_boards.forEach(function(b) {
         html += row(b.asset_id, b.title);
       });
+      html += "</div>";
+    }
+    if (d.civic_ark_product_line && d.civic_ark_product_line.assets && d.civic_ark_product_line.assets.length) {
+      var ca = d.civic_ark_product_line;
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Civic Ark product line (' + ca.assets.length + ' · ' + safeVal(ca.amendment) + ')</div>';
+      ca.assets.forEach(function(a) {
+        html += row(a.asset_id + " · rev " + a.rev, a.title);
+      });
+      if (ca.kernel_alignment) {
+        html += row("Kernel alignment", ca.kernel_alignment);
+      }
       html += "</div>";
     }
     html += '<div class="v7-subgroup">' + row("Staleness", stalenessBadge(d)) + "</div>";
