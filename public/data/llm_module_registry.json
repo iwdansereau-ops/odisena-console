@@ -1,13 +1,19 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.2.0",
   "artifact_family": "llm_module_registry_mirror",
-  "generated_at": "2026-07-08T22:51:00-04:00",
-  "generator": "manual_phase1_cross_thread_enhancement",
-  "source_of_truth": "llm_module_registry.json (Space)",
+  "generated_at": "2026-07-09T01:49:00-04:00",
+  "generator": "manual_phase1_cross_thread_enhancement_v1_2_bump",
+  "source_of_truth": "odisena_openai_responses_registry_patch_report_2026-07-09_0144ET.md + odisena_llm_module_registry_status_dashboard_2026-07-09_0146ET.md",
+  "source_of_truth_note": "Space llm_module_registry.json JSON file is still at v1.0 (Rosetta only) as of 2026-07-09 01:49 ET. Console mirror leads the Space JSON per authoritative sibling reports at 2026-07-09 01:44 and 01:46 ET which specify registry_version 1.2 with three modules. Space JSON reconciliation is a held sibling-thread action.",
   "source_generated_at": "2026-07-08T22:36:00-04:00",
-  "source_updated_at": "2026-07-09T02:39:00Z",
+  "source_updated_at": "2026-07-09T05:44:00Z",
   "registry_name": "Odisena LLM Module Registry",
-  "registry_version": "1.0",
+  "registry_version": "1.2",
+  "revision_lineage": [
+    {"revision": "1.0", "date": "2026-07-08", "scope": "initial single-module registry (rosetta_alignment_console)"},
+    {"revision": "1.1", "date": "2026-07-09", "scope": "adds second module (oidc_trust_policy_sentinel) per OIDC sentinel cross-thread enhancement", "source_report": "odisena_oidc_sentinel_cross_thread_enhance_2026-07-08_2354ET.md"},
+    {"revision": "1.2", "date": "2026-07-09", "scope": "adds third module (openai_responses_integration) per OpenAI Responses registry patch", "source_report": "odisena_openai_responses_registry_patch_report_2026-07-09_0144ET.md", "dashboard": "odisena_llm_module_registry_status_dashboard_2026-07-09_0146ET.md"}
+  ],
   "modules": [
     {
       "module_id": "rosetta_alignment_console",
@@ -51,11 +57,131 @@
         "print_readiness_preservation",
         "structured_output_advisory_without_policy_gate"
       ]
+    },
+    {
+      "module_id": "oidc_trust_policy_sentinel",
+      "module_name": "OIDC Trust-Policy Sentinel",
+      "module_type": "security_drift_scanner",
+      "status": "seeded",
+      "latest_status_label": "PRE_FIRST_RUN",
+      "source_bundle": {
+        "delivery_date": "2026-07-02",
+        "bundle_path": "/home/user/workspace/github-oidc-aws (untouched canonical)",
+        "components": [
+          "terraform/main.tf",
+          "terraform/variables.tf",
+          "cloudformation/github-oidc.yaml",
+          ".github/workflows/deploy-otel-collector.yml"
+        ],
+        "hardening_reference": "SHA-pinned actions, deny-by-default permissions, environment-gated deploys, sub StringLike + aud StringEquals conditions"
+      },
+      "baseline_contract": {
+        "schema_space": "odisena_oidc_baseline_schema_2026-07-08.yaml.txt",
+        "template_space": "odisena_oidc_baseline_template_2026-07-08.yaml.txt",
+        "canonical_path": "security/oidc-baseline.yaml (per owning repo, on main)",
+        "schema_version": 1
+      },
+      "eval": {
+        "latest_scan_at": null,
+        "latest_pass_count": 0,
+        "latest_fail_count": 0,
+        "latest_total_count": 0,
+        "failed_eval_ids": [],
+        "latest_report_space": null
+      },
+      "scheduled_health": {
+        "task_id": "4d38c8a5",
+        "task_name": "Weekly OIDC IAM trust-policy drift scan",
+        "cadence": "Every Monday at 1200 UTC (08:00 ET during EDT)",
+        "next_run": "2026-07-13T08:00:00-04:00",
+        "silent_on_clean": true,
+        "registry_update_after_scan": true,
+        "console_mirror_target": "oidc_drift_registry.json"
+      },
+      "drift_rules": [
+        {"id": "rule_A_sub_widening", "severity": "CRITICAL", "short": "sub allow-list widened beyond baseline or contains prohibited wildcard"},
+        {"id": "rule_B_audience_regression", "severity": "CRITICAL", "short": "aud condition missing, non-StringEquals, or not sts.amazonaws.com"},
+        {"id": "rule_C_provider_swap", "severity": "CRITICAL", "short": "Principal.Federated no longer matches baseline OIDC provider ARN"},
+        {"id": "rule_D_condition_weakening", "severity": "WARN", "short": "sub condition test weakened StringEquals to StringLike on non-wildcard values"},
+        {"id": "rule_E_unconditional_allow", "severity": "WARN", "short": "New Allow statement without both aud and sub conditions"},
+        {"id": "baseline_missing", "severity": "WARN", "short": "security/oidc-baseline.yaml not found on main of owning repo"}
+      ],
+      "sibling_scanners": [
+        {"task_id": "c6420dfe", "name": "Terraform module drift", "relation": "state-file drift, cross-ref only"},
+        {"task_id": "927091eb", "name": "Weekly IAM least-privilege audit", "relation": "non-overlapping (permission boundaries)"},
+        {"task_id": "32db4991", "name": "Odisena v8 Doctrine Drift Check", "relation": "different scope, shared Monday 0800 ET slot only"}
+      ],
+      "core_safeguards": [
+        "no_trust_policy_json_stored",
+        "no_cloudtrail_event_bodies_stored",
+        "no_condition_values_stored",
+        "arn_references_only",
+        "rule_identifiers_only",
+        "silent_on_clean_runs",
+        "baseline_missing_severity_warn_not_critical"
+      ]
+    },
+    {
+      "module_id": "openai_responses_integration",
+      "module_name": "OpenAI Responses Integration",
+      "module_type": "llm_api_integration_boilerplate",
+      "status": "seeded",
+      "latest_status_label": "DOCUMENTED_NOT_DEPLOYED",
+      "intended_repo_path": "packages/ai-openai",
+      "docs_bundle": {
+        "space_index": "odisena_openai_responses_space_index_2026-07-08.md",
+        "root_readme": "odisena_openai_responses_root_README_2026-07-08.md",
+        "runbook": "odisena_openai_responses_RUNBOOK_2026-07-08.md",
+        "implementation_ticket": "odisena_openai_responses_implementation_ticket_2026-07-08.md",
+        "staging_smoke_test": "odisena_openai_responses_staging_smoke_test_runbook_2026-07-08.md",
+        "deployment_checklist": "odisena_openai_responses_deployment_checklist_2026-07-08.md",
+        "post_deployment_record": "odisena_openai_responses_post_deployment_record_template_2026-07-08.md",
+        "envelope_schema": "odisena_openai_responses_envelope_schema_2026-07-08.json",
+        "docs_enhancement_report": "odisena_openai_responses_docs_enhancement_report_2026-07-08.md",
+        "registry_patch_report": "odisena_openai_responses_registry_patch_report_2026-07-09_0144ET.md"
+      },
+      "source_archive": {
+        "archive_name": "odisena_openai_responses_boilerplate",
+        "location": "originating_task_thread_asset",
+        "space_upload_supported": false,
+        "restore_target": "packages/ai-openai"
+      },
+      "generation_time_validation": {
+        "typecheck": "pass",
+        "build": "pass",
+        "tests": "61/61 pass",
+        "tests_mode": "mock_only"
+      },
+      "readiness_gates": {
+        "source_archive_created": "pass",
+        "source_archive_uploaded_to_space": "not_applicable_zip_unsupported",
+        "typecheck_at_generation": "pass",
+        "build_at_generation": "pass",
+        "tests_at_generation": "pass",
+        "tests_mock_only": "pass",
+        "restored_to_main_repo": "pending",
+        "staging_smoke_test": "pending",
+        "production_deployed": "pending"
+      },
+      "scheduled_health": null,
+      "response_contract": {
+        "structured_envelope_compatible": true,
+        "envelope_schema_space": "odisena_openai_responses_envelope_schema_2026-07-08.json"
+      },
+      "core_safeguards": [
+        "no_secrets_in_space_git_logs_or_registry",
+        "no_prompts_or_completions_in_ledgers_or_telemetry",
+        "structured_outputs_require_caller_policy_gate",
+        "pricing_units_must_not_be_mixed",
+        "tests_must_remain_mock_only",
+        "source_zip_is_thread_asset_not_space_asset"
+      ],
+      "next_action": "Restore source archive into packages/ai-openai and run npm install / typecheck / build / test, then follow implementation ticket."
     }
   ],
   "registry_governance": {
     "side_effect_rule": "The registry is an operational index only. It must not itself trigger production side effects.",
-    "artifact_rule": "Never store secrets, auth headers, prompts, or completions in this registry.",
+    "artifact_rule": "Never store secrets, auth headers, prompts, completions, trust-policy JSON, CloudTrail event bodies, or Condition values in this registry.",
     "status_rule": "A module is production_ready only when its latest eval passes, its source manifest is valid, and no blocking scheduled-health issue is open."
   },
   "staleness": {
@@ -64,8 +190,16 @@
     "current_status": "fresh"
   },
   "lineage": {
-    "authoring_thread": "Rosetta LLM update-and-enhance v1.1 (2026-07-08)",
-    "patched_by": "task_patch_registry_update_2026-07-08.md",
-    "post_patch_eval": "PASS 10/10 at 2026-07-09T02:39:00Z"
+    "authoring_thread": "Rosetta LLM v1.1 (2026-07-08) + OIDC sentinel cross-thread (2026-07-08 23:54 ET) + OpenAI Responses registry patch (2026-07-09 01:44 ET)",
+    "patched_by": ["task_patch_registry_update_2026-07-08.md", "odisena_task_patch_oidc_sentinel_2026-07-08.md", "odisena_openai_responses_registry_patch_report_2026-07-09_0144ET.md"],
+    "post_patch_eval": "Rosetta PASS 10/10 at 2026-07-09T02:39:00Z; OIDC seeded pre-first-run (first run 2026-07-13 08:00 ET); OpenAI Responses seeded DOCUMENTED_NOT_DEPLOYED (gen-time tests 61/61 mock-only pass)",
+    "registry_summary": {
+      "total_modules": 3,
+      "production_ready": 1,
+      "seeded": 2,
+      "blocked": 0,
+      "with_scheduled_health": 2,
+      "envelope_compatible": 3
+    }
   }
 }
