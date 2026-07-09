@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0",
+  "artifact_family": "odisena-console-mirror",
+  "generated_at": "2026-07-09T15:37:00-04:00",
+  "generator": "PR #10 execution-track mirror",
+  "purpose": "Metadata-only status mirror of Odisena execution tracks. Advisory ↔ authoritative distinction preserved in every entry. Console MUST NOT be read as authoritative for any of these tracks.",
+  "authoritative_boundary_note": "All entries below are advisory status flags. Source-of-truth artifacts live in the Odisena Space. Console mirrors metadata only for navigation and cross-thread visibility. NO filing, engagement, signature, upload, or conversion authorized by this file.",
+  "operating_command": "Hold LLC-now. Stabilize canon. Populate founder facts. Engage CPA/counsel only after review. Send outreach one-to-one. Track everything.",
+  "tracks": [
+    {
+      "id": "T1",
+      "name": "Canon and governance control",
+      "class": "standing guardrail",
+      "status": "ACTIVE",
+      "authoritative_source": "odisena_execution_packet_2026-07-09.md (Track 1)",
+      "current_directives": [
+        "Use v9-A as canonical Layer-1 in future artifacts",
+        "Preserve v9-B/v8 as historical peers (no deletion, no mutation)",
+        "Run F.9 pre-scan before any future amendment emission",
+        "Do not create v9-am ordinals without explicit directive"
+      ]
+    },
+    {
+      "id": "T2",
+      "name": "Entity facts confirmation",
+      "class": "operator-populated",
+      "status": "PENDING population",
+      "authoritative_source": "odisena_execution_packet_2026-07-09.md (Track 2)",
+      "fact_slots": 9,
+      "fact_slots_populated": "operator-review-required",
+      "note": "Working posture: Delaware LLC · founder residency New Castle DE · principal place Bethesda MD. Confirmation required before CPA engagement."
+    },
+    {
+      "id": "T3",
+      "name": "G6 founder-only population pass",
+      "class": "prerequisite-to-CPA-engagement",
+      "status": "OPEN — advisory pass complete, operator population pending",
+      "authoritative_source": "odisena_g6_reconciliation_pass_2026-07-09_0401ET.md (advisory) + odisena_g6_founder_only_population_pass_template_2026-07-09_0430ET.md (template)",
+      "artifact_slots": 10,
+      "gating": "must be materially populated before CPA outreach"
+    },
+    {
+      "id": "T4",
+      "name": "CPA outreach",
+      "class": "external engagement · operator-gated",
+      "status": "STAGED — do not send until T2 reviewed and T3 populated",
+      "authoritative_sources": [
+        "odisena_cpa_engagement_brief_external_2026-07-09_0445ET.pdf",
+        "odisena_cpa_engagement_brief_external_2026-07-09_0445ET.md",
+        "odisena_cpa_outreach_email_template_2026-07-09_0452ET.md",
+        "odisena_g6_cpa_engagement_brief_2026-07-09_0438ET.md"
+      ],
+      "subject_recommended": "Scoping Inquiry: Delaware LLC → C-Corp Conversion (Odisena LLC)",
+      "sending_mode": "one-to-one · NO bulk"
+    },
+    {
+      "id": "CCR-02.E",
+      "name": "LLC → C-corp conversion track (Schedule A)",
+      "class": "advisory / working draft · NON-CANONICAL",
+      "status": "OPEN — Schedule A working draft filed 03:48 ET",
+      "authoritative_source": "odisena_g6_reconciliation_pass_2026-07-09_0401ET.md (CCR-02.E scope)",
+      "posture": "Hold LLC-now; convert only after CPA/counsel review",
+      "ip_staging_note": "Civic Ark package internals staged as trade-secret; visual bible + Civic Ark staged as copyrights-in-creative-works (Schedule 1 NOT populated in 03:48 draft)",
+      "authorized_actions": "none — no filing, no signature, no DocuSign, no conversion",
+      "warning": "Console mirror is NOT a canonical filing record. Any conversion requires operator direct action outside console."
+    }
+  ],
+  "advisory_synthesis": {
+    "artifact": "odisena_once_and_for_all_master_memo_2026-07-09.pplx.md",
+    "class": "execution doctrine synthesis · NON-CANONICAL",
+    "role": "operator-facing decision-support summary; not a doctrine supersession instrument"
+  },
+  "asset_evidence_index": {
+    "artifact": "odisena_asset_and_evidence_index_2026-07-09.md",
+    "class": "navigation aid · non-superseding",
+    "role": "index of high-signal artifacts; console mirror links here rather than duplicating"
+  },
+  "held_refusals": [
+    "No CPA outreach sent — awaits T2/T3 completion + operator directive",
+    "No filing, signature, engagement, upload, or conversion authorized by this file",
+    "No modification to Civic Ark package (per sync_note_2: no product impact)",
+    "No new v9-am ordinal claim (v9-am-004 unallocated)",
+    "No modification to scheduled_tasks_ledger (session not ledger-authoritative)",
+    "No modification to media intake schema v1.8 (out of console scope)"
+  ],
+  "safety_boundary": "Status flags and IDs only. NO founder facts, NO PII, NO account numbers, NO tax IDs, NO CPA contact identities, NO Schedule A body content."
+}
