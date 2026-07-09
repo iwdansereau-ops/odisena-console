@@ -231,6 +231,21 @@
         <div class="v7-skel w60"></div>
       </div>
     </section>
+
+    <section class="v7-panel wide" id="panel-oidc-drift" aria-labelledby="oidc-drift-heading">
+      <div class="v7-panel-head">
+        <div>
+          <h2 id="oidc-drift-heading">OIDC Drift Sentinel</h2>
+          <div class="v7-panel-sub">task 4d38c8a5 · weekly Mon 08:00 ET · authority-layer v8-security · silent on clean</div>
+        </div>
+        <button class="v7-panel-copy" type="button" data-copy="public/data/oidc_drift_registry.json" aria-label="Copy JSON path">📋 path</button>
+      </div>
+      <div id="oidc-drift-body" aria-busy="true">
+        <div class="v7-skel w80"></div>
+        <div class="v7-skel w60"></div>
+        <div class="v7-skel w40"></div>
+      </div>
+    </section>
   </div>
 
   <div class="v7-lineage" style="margin-top: 24px; text-align: center;">
@@ -501,6 +516,64 @@
     el.setAttribute("aria-busy", "false");
   }
 
+  function renderOidcDrift(d) {
+    var html = "";
+    var task = d.source_task || {};
+    var hint = d.console_render_hint || {};
+    html += row("Task", (task.task_name || "?") + " (" + (task.task_id || "?") + ")");
+    html += row("Cadence", safeVal(task.cadence));
+    html += row("Registry module", safeVal(task.registry_module_id));
+
+    var state = d.seed_state || {};
+    var scanTime = state.scan_time_utc;
+    if (!scanTime) {
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">State</div>';
+      html += row("Status", '<span class="v7-badge seeded">seeded</span> ' + safeVal(hint.empty_state_copy));
+      html += "</div>";
+    } else {
+      var findingCount = state.finding_count || 0;
+      var scannedCount = state.scanned_role_count || 0;
+      var missingCount = state.baseline_missing_count || 0;
+      var statusCls = findingCount === 0 && missingCount === 0 ? "clean" : (findingCount > 0 ? "action_needed" : "warn");
+      var statusLabel = findingCount === 0 && missingCount === 0 ? "clean" : (findingCount + " drift, " + missingCount + " baseline_missing");
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Latest scan</div>';
+      html += row("Scanned at", scanTime);
+      html += row("Roles audited", scannedCount);
+      html += row("Findings", findingCount);
+      html += row("Baseline missing", missingCount);
+      html += row("Status", '<span class="v7-badge ' + statusCls + '">' + statusLabel + "</span>");
+      html += "</div>";
+      if (state.per_role && state.per_role.length) {
+        html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Per-role findings (' + state.per_role.length + ')</div>';
+        state.per_role.forEach(function(r) {
+          var sevCls = (r.severity || "").toLowerCase().replace(/[^a-z0-9_-]/gi, "_");
+          var rules = (r.finding_rules || []).join(", ") || "clean";
+          html += row((r.owning_repo || "?") + " · " + (r.role_arn || "?"), '<span class="v7-badge ' + sevCls + '">' + (r.severity || "?") + "</span> " + rules);
+        });
+        html += "</div>";
+      }
+    }
+
+    if (d.rule_glossary) {
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Rule glossary</div>';
+      Object.keys(d.rule_glossary).forEach(function(k) {
+        var r = d.rule_glossary[k];
+        html += row(k + " · " + r.severity, safeVal(r.short));
+      });
+      html += "</div>";
+    }
+
+    if (d.sibling_mirrors && d.sibling_mirrors.length) {
+      html += '<div class="v7-subgroup">' + row("Sibling mirrors", d.sibling_mirrors.join(", ")) + "</div>";
+    }
+
+    html += '<div class="v7-subgroup">' + row("Staleness", stalenessBadge(d)) + "</div>";
+    html += lineage(d);
+    var el = document.getElementById("oidc-drift-body");
+    el.innerHTML = html;
+    el.setAttribute("aria-busy", "false");
+  }
+
   function loadJSON(path, renderer, elId) {
     var el = document.getElementById(elId);
     el.setAttribute("aria-busy", "true");
@@ -528,7 +601,8 @@
     "constellation-body": ["public/data/constellation_state_v7.json", renderConstellation],
     "llm-registry-body": ["public/data/llm_module_registry.json", renderLlmRegistry],
     "visual-bible-body": ["public/data/visual_bible_register.json", renderVisualBible],
-    "openai-gates-body": ["public/data/openai_responses_gate_ladder.json", renderOpenAIGates]
+    "openai-gates-body": ["public/data/openai_responses_gate_ladder.json", renderOpenAIGates],
+    "oidc-drift-body": ["public/data/oidc_drift_registry.json", renderOidcDrift]
   };
 
   function loadAll() {
