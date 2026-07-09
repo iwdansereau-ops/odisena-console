@@ -1,13 +1,17 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "artifact_family": "llm_module_registry_mirror",
-  "generated_at": "2026-07-08T22:51:00-04:00",
-  "generator": "manual_phase1_cross_thread_enhancement",
+  "generated_at": "2026-07-09T01:45:00-04:00",
+  "generator": "manual_phase1_cross_thread_enhancement_v1_1_bump",
   "source_of_truth": "llm_module_registry.json (Space)",
   "source_generated_at": "2026-07-08T22:36:00-04:00",
   "source_updated_at": "2026-07-09T02:39:00Z",
   "registry_name": "Odisena LLM Module Registry",
-  "registry_version": "1.0",
+  "registry_version": "1.1",
+  "revision_lineage": [
+    {"revision": "1.0", "date": "2026-07-08", "scope": "initial single-module registry (rosetta_alignment_console)"},
+    {"revision": "1.1", "date": "2026-07-09", "scope": "adds second module (oidc_trust_policy_sentinel) per OIDC sentinel cross-thread enhancement", "source_report": "odisena_oidc_sentinel_cross_thread_enhance_2026-07-08_2354ET.md"}
+  ],
   "modules": [
     {
       "module_id": "rosetta_alignment_console",
@@ -51,11 +55,74 @@
         "print_readiness_preservation",
         "structured_output_advisory_without_policy_gate"
       ]
+    },
+    {
+      "module_id": "oidc_trust_policy_sentinel",
+      "module_name": "OIDC Trust-Policy Sentinel",
+      "module_type": "security_drift_scanner",
+      "status": "seeded",
+      "latest_status_label": "PRE_FIRST_RUN",
+      "source_bundle": {
+        "delivery_date": "2026-07-02",
+        "bundle_path": "/home/user/workspace/github-oidc-aws (untouched canonical)",
+        "components": [
+          "terraform/main.tf",
+          "terraform/variables.tf",
+          "cloudformation/github-oidc.yaml",
+          ".github/workflows/deploy-otel-collector.yml"
+        ],
+        "hardening_reference": "SHA-pinned actions, deny-by-default permissions, environment-gated deploys, sub StringLike + aud StringEquals conditions"
+      },
+      "baseline_contract": {
+        "schema_space": "odisena_oidc_baseline_schema_2026-07-08.yaml.txt",
+        "template_space": "odisena_oidc_baseline_template_2026-07-08.yaml.txt",
+        "canonical_path": "security/oidc-baseline.yaml (per owning repo, on main)",
+        "schema_version": 1
+      },
+      "eval": {
+        "latest_scan_at": null,
+        "latest_pass_count": 0,
+        "latest_fail_count": 0,
+        "latest_total_count": 0,
+        "failed_eval_ids": [],
+        "latest_report_space": null
+      },
+      "scheduled_health": {
+        "task_id": "4d38c8a5",
+        "task_name": "Weekly OIDC IAM trust-policy drift scan",
+        "cadence": "Every Monday at 1200 UTC (08:00 ET during EDT)",
+        "next_run": "2026-07-13T08:00:00-04:00",
+        "silent_on_clean": true,
+        "registry_update_after_scan": true,
+        "console_mirror_target": "oidc_drift_registry.json"
+      },
+      "drift_rules": [
+        {"id": "rule_A_sub_widening", "severity": "CRITICAL", "short": "sub allow-list widened beyond baseline or contains prohibited wildcard"},
+        {"id": "rule_B_audience_regression", "severity": "CRITICAL", "short": "aud condition missing, non-StringEquals, or not sts.amazonaws.com"},
+        {"id": "rule_C_provider_swap", "severity": "CRITICAL", "short": "Principal.Federated no longer matches baseline OIDC provider ARN"},
+        {"id": "rule_D_condition_weakening", "severity": "WARN", "short": "sub condition test weakened StringEquals to StringLike on non-wildcard values"},
+        {"id": "rule_E_unconditional_allow", "severity": "WARN", "short": "New Allow statement without both aud and sub conditions"},
+        {"id": "baseline_missing", "severity": "WARN", "short": "security/oidc-baseline.yaml not found on main of owning repo"}
+      ],
+      "sibling_scanners": [
+        {"task_id": "c6420dfe", "name": "Terraform module drift", "relation": "state-file drift, cross-ref only"},
+        {"task_id": "927091eb", "name": "Weekly IAM least-privilege audit", "relation": "non-overlapping (permission boundaries)"},
+        {"task_id": "32db4991", "name": "Odisena v8 Doctrine Drift Check", "relation": "different scope, shared Monday 0800 ET slot only"}
+      ],
+      "core_safeguards": [
+        "no_trust_policy_json_stored",
+        "no_cloudtrail_event_bodies_stored",
+        "no_condition_values_stored",
+        "arn_references_only",
+        "rule_identifiers_only",
+        "silent_on_clean_runs",
+        "baseline_missing_severity_warn_not_critical"
+      ]
     }
   ],
   "registry_governance": {
     "side_effect_rule": "The registry is an operational index only. It must not itself trigger production side effects.",
-    "artifact_rule": "Never store secrets, auth headers, prompts, or completions in this registry.",
+    "artifact_rule": "Never store secrets, auth headers, prompts, completions, trust-policy JSON, CloudTrail event bodies, or Condition values in this registry.",
     "status_rule": "A module is production_ready only when its latest eval passes, its source manifest is valid, and no blocking scheduled-health issue is open."
   },
   "staleness": {
@@ -64,8 +131,8 @@
     "current_status": "fresh"
   },
   "lineage": {
-    "authoring_thread": "Rosetta LLM update-and-enhance v1.1 (2026-07-08)",
-    "patched_by": "task_patch_registry_update_2026-07-08.md",
-    "post_patch_eval": "PASS 10/10 at 2026-07-09T02:39:00Z"
+    "authoring_thread": "Rosetta LLM update-and-enhance v1.1 (2026-07-08) + OIDC sentinel cross-thread enhancement (2026-07-08 23:54 ET)",
+    "patched_by": ["task_patch_registry_update_2026-07-08.md", "odisena_task_patch_oidc_sentinel_2026-07-08.md"],
+    "post_patch_eval": "Rosetta PASS 10/10 at 2026-07-09T02:39:00Z; OIDC seeded pre-first-run (first run 2026-07-13 08:00 ET)"
   }
 }

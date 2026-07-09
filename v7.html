@@ -231,6 +231,23 @@
         <div class="v7-skel w60"></div>
       </div>
     </section>
+
+    <section class="v7-panel wide" id="panel-oidc-drift" aria-labelledby="oidc-drift-heading">
+      <div class="v7-panel-head">
+        <div>
+          <h2 id="oidc-drift-heading">OIDC Drift Sentinel</h2>
+          <div class="v7-panel-sub">task 4d38c8a5 · weekly Mon 08:00 ET · seeded pre-first-run</div>
+        </div>
+        <button class="v7-panel-copy" type="button" data-copy="public/data/oidc_drift_registry.json" aria-label="Copy JSON path">📋 path</button>
+      </div>
+      <div id="oidc-drift-body" aria-busy="true">
+        <div class="v7-skel w80"></div>
+        <div class="v7-skel w60"></div>
+        <div class="v7-skel w80"></div>
+        <div class="v7-skel w40"></div>
+        <div class="v7-skel w60"></div>
+      </div>
+    </section>
   </div>
 
   <div class="v7-lineage" style="margin-top: 24px; text-align: center;">
@@ -421,9 +438,17 @@
       var statusCls = (m.status || "").replace(/[^a-z0-9_-]/gi, "_");
       html += '<div class="v7-subgroup"><div class="v7-subgroup-title">' + safeVal(m.module_name, m.module_id) + ' <span class="v7-badge ' + statusCls + '">' + safeVal(m.latest_status_label, m.status) + "</span></div>";
       if (m.custom_skill) html += row("Skill", m.custom_skill.name + " v" + m.custom_skill.version);
-      if (m.eval) html += row("Eval", m.eval.pass_count + "/" + m.eval.total_count + " · " + safeVal(m.eval.latest_run_at));
+      if (m.source_bundle) html += row("Source bundle", safeVal(m.source_bundle.delivery_date) + " · " + (m.source_bundle.components || []).length + " components");
+      if (m.eval) {
+        if (m.eval.latest_run_at) {
+          html += row("Eval", m.eval.pass_count + "/" + m.eval.total_count + " · " + safeVal(m.eval.latest_run_at));
+        } else if (m.eval.latest_scan_at !== undefined) {
+          html += row("Scan", m.eval.latest_scan_at ? (m.eval.latest_pass_count + "/" + m.eval.latest_total_count + " · " + safeVal(m.eval.latest_scan_at)) : "pre-first-run (seeded)");
+        }
+      }
       if (m.scheduled_health) html += row("Next health check", safeVal(m.scheduled_health.next_run) + " (task " + m.scheduled_health.task_id + ")");
       if (m.response_contract) html += row("Envelope compatible", m.response_contract.structured_envelope_compatible ? "yes" : "no");
+      if (m.drift_rules && m.drift_rules.length) html += row("Drift rules", m.drift_rules.length + " (" + m.drift_rules.filter(function(r){return r.severity==="CRITICAL";}).length + " CRITICAL, " + m.drift_rules.filter(function(r){return r.severity==="WARN";}).length + " WARN)");
       html += "</div>";
     });
     html += '<div class="v7-subgroup">' + row("Staleness", stalenessBadge(d)) + "</div>";
@@ -519,6 +544,59 @@
     el.setAttribute("aria-busy", "false");
   }
 
+  function renderOidcDrift(d) {
+    var html = "";
+    var src = d.source_task || {};
+    var seed = d.seed_state || {};
+    var hint = d.console_render_hint || {};
+    html += row("Task", safeVal(src.task_id) + " · " + safeVal(src.task_name));
+    html += row("Cadence", safeVal(src.cadence));
+    html += row("Registry module", safeVal(src.registry_module_id));
+    html += row("Next scheduled run", safeVal(d.next_scheduled_run));
+    // State line
+    var stateLine;
+    if (!seed.scan_time_utc) {
+      stateLine = '<span class="v7-badge seeded">' + safeVal(hint.empty_state_copy || "No live scan yet.") + '</span>';
+    } else if ((seed.finding_count || 0) === 0) {
+      var cleanCopy = (hint.clean_state_copy || "All scanned roles clean.")
+        .replace("{scan_time_utc}", safeVal(seed.scan_time_utc))
+        .replace("{scanned_role_count}", String(seed.scanned_role_count || 0));
+      stateLine = '<span class="v7-badge PASS">' + cleanCopy + '</span>';
+    } else {
+      var driftCopy = (hint.drift_state_copy || "Drift detected.")
+        .replace("{finding_count}", String(seed.finding_count || 0))
+        .replace("{scanned_role_count}", String(seed.scanned_role_count || 0));
+      stateLine = '<span class="v7-badge FAIL">' + driftCopy + '</span>';
+    }
+    html += row("State", stateLine);
+    html += row("Scanned roles", String(seed.scanned_role_count || 0));
+    html += row("Findings / Baselines missing", String(seed.finding_count || 0) + " / " + String(seed.baseline_missing_count || 0));
+    if (d.rule_glossary) {
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Drift rules</div>';
+      Object.keys(d.rule_glossary).forEach(function(k) {
+        var r = d.rule_glossary[k];
+        html += row(k.replace(/^rule_/, "").replace(/_/g, " "), '<span class="v7-badge ' + safeVal(r.severity) + '">' + safeVal(r.severity) + '</span> ' + safeVal(r.short));
+      });
+      html += "</div>";
+    }
+    if (d.safety_boundary) {
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Safety boundary</div>';
+      html += row("Rule", d.safety_boundary);
+      html += "</div>";
+    }
+    if (d.sibling_mirrors && d.sibling_mirrors.length) {
+      html += '<div class="v7-subgroup">' + row("Sibling mirrors", d.sibling_mirrors.join(", ")) + "</div>";
+    }
+    if (hint.authority_layer) {
+      html += row("Authority layer", hint.authority_layer);
+    }
+    html += '<div class="v7-subgroup">' + row("Staleness", stalenessBadge(d)) + "</div>";
+    html += lineage(d);
+    var el = document.getElementById("oidc-drift-body");
+    el.innerHTML = html;
+    el.setAttribute("aria-busy", "false");
+  }
+
   function loadJSON(path, renderer, elId) {
     var el = document.getElementById(elId);
     el.setAttribute("aria-busy", "true");
@@ -546,7 +624,8 @@
     "constellation-body": ["public/data/constellation_state_v7.json", renderConstellation],
     "llm-registry-body": ["public/data/llm_module_registry.json", renderLlmRegistry],
     "visual-bible-body": ["public/data/visual_bible_register.json", renderVisualBible],
-    "openai-gates-body": ["public/data/openai_responses_gate_ladder.json", renderOpenAIGates]
+    "openai-gates-body": ["public/data/openai_responses_gate_ladder.json", renderOpenAIGates],
+    "oidc-drift-body": ["public/data/oidc_drift_registry.json", renderOidcDrift]
   };
 
   function loadAll() {
