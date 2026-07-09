@@ -1,23 +1,31 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "artifact_family": "visual_bible_asset_register_mirror",
-  "generated_at": "2026-07-08T22:51:00-04:00",
-  "generator": "manual_phase1_cross_thread_enhancement",
-  "source_of_truth": "odisena_visual_bible_asset_register_2026-07-08.xlsx",
-  "revision": "1.0",
+  "generated_at": "2026-07-09T01:21:00-04:00",
+  "generator": "manual_phase1_cross_thread_enhancement_rev_1_1_bump",
+  "source_of_truth": "odisena_visual_bible_asset_register_rev1_1_2026-07-08.xlsx",
+  "prior_source_of_truth": "odisena_visual_bible_asset_register_2026-07-08.xlsx",
+  "revision": "1.1",
+  "revision_lineage": [
+    {"revision": "1.0", "date": "2026-07-08", "scope": "initial 30-asset register"},
+    {"revision": "1.1", "date": "2026-07-08", "scope": "adds ODS-VB-031..036 Civic Ark product line under v8-am-036", "amendment": "v8-am-036"}
+  ],
   "engineering_template_id": "ODS-ENG-TEMPLATE-1.0",
   "engineering_template_source": "odisena_atn_engineering_style_guide_2026-07-08.md",
+  "visual_system_authority": "v8-am-035",
+  "product_line_authority": "v8-am-036",
   "summary": {
-    "total_assets": 30,
-    "active": 16,
+    "total_assets": 36,
+    "active": 22,
     "canonical": 3,
     "rebuilt_rev_2": 8,
     "patched": 1,
     "retired": 2,
     "layer_counts": {
-      "engineering": 19,
+      "engineering": 21,
       "mythic": 4,
-      "ops": 7
+      "ops": 7,
+      "sales": 4
     }
   },
   "canonical_reference_boards": [
@@ -39,10 +47,37 @@
     {"asset_id": "ODS-VB-012", "reason": "superseded by canonical Helios One Rev 1.0 (ODS-VB-011)"},
     {"asset_id": "ODS-VB-030", "reason": "byte-identical duplicate of ODS-VB-003"}
   ],
+  "civic_ark_product_line": {
+    "amendment": "v8-am-036",
+    "emitted": "2026-07-08T23:05:00-04:00",
+    "predecessor_amendment": "v8-am-035",
+    "assets": [
+      {"asset_id": "ODS-VB-031", "title": "Civic Ark Engineering Set (nine-sheet schematic S-000..S-800)", "layer": "engineering", "rev": "2.0", "status": "Active"},
+      {"asset_id": "ODS-VB-032", "title": "Civic Ark Licensing & Pricing Prospectus", "layer": "sales", "rev": "2.0", "status": "Active"},
+      {"asset_id": "ODS-VB-033", "title": "Civic Ark Investor Pitch Deck (8 slides + speaker notes)", "layer": "sales", "rev": "1.0", "status": "Active"},
+      {"asset_id": "ODS-VB-034", "title": "Civic Ark Hero Render — Living Pitch interior", "layer": "sales", "rev": "1.0", "status": "Active"},
+      {"asset_id": "ODS-VB-035", "title": "Civic Ark Exterior Dusk Render", "layer": "sales", "rev": "1.0", "status": "Active"},
+      {"asset_id": "ODS-VB-036", "title": "Civic Ark Cross-Section Wayfinding Diagram", "layer": "engineering", "rev": "1.0", "status": "Active"}
+    ],
+    "engineering_sheets": [
+      {"id": "S-000", "title": "Cover Sheet & Index"},
+      {"id": "S-100", "title": "Site & Roof Plan (Canopy Grid)"},
+      {"id": "S-200", "title": "Building Cross-Section (Five-zone)"},
+      {"id": "S-300", "title": "Living Pitch Terraces Plan"},
+      {"id": "S-400", "title": "Systems Schematic (Seven-loop palette)"},
+      {"id": "S-500", "title": "Surge Capacity & Egress"},
+      {"id": "S-600", "title": "Seven-Loop Wayfinding & Resource Lines"},
+      {"id": "S-700", "title": "Command Dashboard Operations Board"},
+      {"id": "S-800", "title": "District Recovery Radius"}
+    ],
+    "licensing_ladder_note": "Pricing ladder canonical, unchanged; details reside in prospectus artifact — not mirrored here (no sales-figure duplication in console).",
+    "kernel_alignment": "9-of-9 PASS per v8-am-036 §2"
+  },
   "distribution_log": [
     {"date": "2026-07-08", "channel": "Zip archive", "artifact": "OdisenaRebuiltBoards_2026-07-08.zip", "size_mb": 20},
     {"date": "2026-07-08", "channel": "Google Photos album", "artifact": "Odisena Visual Bible Rebuilt Boards Rev 2.0"},
-    {"date": "2026-07-08", "channel": "Google Drive", "artifact": "OdisenaRebuiltBoards_2026-07-08.zip"}
+    {"date": "2026-07-08", "channel": "Google Drive", "artifact": "OdisenaRebuiltBoards_2026-07-08.zip"},
+    {"date": "2026-07-08", "channel": "Civic Ark package v2", "artifact": "OdisenaCivicArkPackage_v2_2026-07-08.zip"}
   ],
   "engineering_layer_conventions": {
     "voice": "calm_declarative_instrument_grade",
@@ -53,9 +88,20 @@
     "status_vocabulary": ["HEALTHY", "PASS", "WARNING", "DEGRADED", "FAIL", "N/A"],
     "footer_badges": ["RUGGED", "SECURE", "RESILIENT", "MODULAR"]
   },
+  "sales_layer_conventions": {
+    "introduced_by": "v8-am-036",
+    "text_free_art_rule": "photorealistic renders (ODS-VB-034/035) contain no typography; all typographic boards are code-drawn per design-review pipeline",
+    "standing_disclaimer": "Schematic design documentation for planning, fundraising, and adaptation purposes. Not for construction. Site-specific structural, MEP, civil, and life-safety engineering and permitting require a licensed architect and engineer of record in the project jurisdiction.",
+    "helios_one_isolation": "no sales artifact references the fictional Helios One layer; all named persons appear only in their real design-team roles"
+  },
   "staleness": {
     "stale_after_hours": 336,
     "warning_after_hours": 168,
     "current_status": "fresh"
+  },
+  "lineage": {
+    "predecessor_mirror": "visual_bible_register.json@1.0.0 (PR #4, commit 84ebd60a)",
+    "supersession_note": "rev 1.1 supersedes rev 1.0 non-destructively; earlier rows preserved verbatim; only Civic Ark rows appended and layer_counts extended",
+    "next_slot": "rev 1.2 available for successor amendments"
   }
 }
