@@ -21,6 +21,12 @@ requires.
 | **P**  | Principal  | One accountable principal owns each promotion decision (solo operator today; scales via `CODEOWNERS`). |
 | **A**  | Assumption | The assumptions behind a promotion are written down and re-checked each cycle. |
 
+The four beats also have a CI implementation: the org-shared **AVPT reusable
+workflow** is wired in (dry-run, no secrets) via
+[`.github/workflows/avpt.yml`](../../.github/workflows/avpt.yml). See
+[`avpt-shared-workflow.md`](./avpt-shared-workflow.md) for the integration
+posture and pin-upgrade guidance.
+
 ## AVPT — the cycle
 
 One **AVPT cycle** per candidate change:
