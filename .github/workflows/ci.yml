@@ -52,7 +52,7 @@ jobs:
           # Full history so merge-base / before..head diffs are available.
           fetch-depth: 0
       - name: Self-test cache-bump logic
-        run: python3 .github/scripts/test_sw_cache_bump.py
+        run: python3 test_sw_cache_bump.py
         working-directory: .github/scripts
       - name: Enforce service-worker cache-key bump
         run: |
