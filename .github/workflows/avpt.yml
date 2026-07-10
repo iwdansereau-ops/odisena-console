@@ -1,0 +1,64 @@
+# AVPT deployment cadence (shared reusable workflow) — DRY-RUN by default.
+#
+# This wires the Odisena Console into the org-shared AVPT reusable workflow that
+# lives in iwdansereau-ops/avpt-cicd-dashboard, pinned to an immutable commit
+# SHA (never a mutable branch/tag). It runs the four AVPT beats
+# (Attempt -> Validate -> Preserve -> Track) against this static PWA.
+#
+# SAFETY / SCOPE (why this cannot affect production):
+#   * Manual only (workflow_dispatch). It does NOT run on push or pull_request,
+#     so the existing `ci.yml` required checks and their contexts are untouched.
+#   * dry_run: true — the platform's deploy/rollback/snapshot mutations are
+#     inert. deploy_command / rollback_command are no-op echoes; no host is
+#     ever contacted and nothing is promoted or reverted.
+#   * No secrets. receiver_url is empty (telemetry/gate disabled) and no
+#     `secrets:` are passed, so no credentials are required or exposed.
+#   * Validate reuses this repo's ACTUAL CI validation scripts.
+#   * Preserve reuses a safe, read-only Vercel/config state snapshot.
+#
+# To upgrade the pin or promote for real, see docs/releases/avpt-shared-workflow.md.
+name: avpt
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: AVPT cycle environment (promotion order develop -> preview -> main)
+        type: choice
+        options: [develop, preview, main]
+        default: develop
+
+# Least privilege: the reusable workflow only checks out this repo and uploads
+# the snapshot artifact. No write scopes are needed for the dry-run path.
+permissions:
+  contents: read
+
+jobs:
+  avpt:
+    uses: iwdansereau-ops/avpt-cicd-dashboard/.github/workflows/avpt-reusable.yml@4e033c739fe50c9cd470132c8005e23297877b19
+    with:
+      environment: ${{ github.event.inputs.environment || 'develop' }}
+
+      # --- Inert deployment posture (dry-run) --------------------------------
+      dry_run: true
+      # No receiver -> the cycle-boundary gate and beat emission are skipped;
+      # keep enforce_gate off so a manual dry-run never blocks on ledger state.
+      receiver_url: ""
+      enforce_gate: false
+
+      # --- Validate: reuse this repo's actual CI validation ------------------
+      # Same scripts ci.yml runs. sw-cache-bump uses its committed self-test
+      # (deterministic, no PR base/head diff needed on a manual dispatch).
+      test_command: >-
+        python3 .github/scripts/validate_html.py &&
+        python3 .github/scripts/validate_catalog.py &&
+        python3 .github/scripts/check_links.py &&
+        ( cd .github/scripts && python3 test_sw_cache_bump.py )
+
+      # --- Preserve: safe, read-only Vercel/config state snapshot ------------
+      snapshot_adapter: custom
+      snapshot_command: python3 .github/scripts/avpt_state_snapshot.py
+
+      # --- Inert deploy / rollback (static PWA: host git-integration deploys) -
+      deploy_command: "echo '[dry-run] static PWA — host git integration auto-deploys; no imperative deploy step'"
+      rollback_command: "echo '[dry-run] static PWA — rollback = re-promote previous host deploy (see DEPLOYMENT.md)'"
