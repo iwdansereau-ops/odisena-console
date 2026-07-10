@@ -1,0 +1,241 @@
+{
+  "_manifest": {
+    "schema": "github-repository-rulesets/manifest@1",
+    "doc": "https://docs.github.com/en/rest/repos/rules",
+    "description": "Source-of-truth manifest of GitHub repository branch rulesets for Odisena Console. GitHub's REST API accepts ONE payload per ruleset (POST /repos/{owner}/{repo}/rulesets), so this file is a manifest: each element of `rulesets[]` is a complete, API-valid payload that the adjacent apply-rulesets.sh iterates and POSTs individually. Keys prefixed with `_` are non-enforced documentation/metadata and are stripped before any API call.",
+    "repository": {
+      "owner": "iwdansereau-ops",
+      "name": "odisena-console",
+      "custom_domain": "console.odisena.com",
+      "topology": "solo-operator",
+      "kind": "static-pwa-no-build"
+    },
+    "environment_mapping": {
+      "develop": "integration / rapid feedback",
+      "preview": "candidate validation / preview environment",
+      "main": "production promotion"
+    },
+    "review_gradient": {
+      "main": "2 approving reviews (production bar) + required signatures + linear history + squash-only",
+      "preview": "1 approving review, linear history, no signature requirement",
+      "develop": "0 approving reviews (PR still required for tracking), merge commits allowed"
+    },
+    "release_governance": {
+      "model": "RFPA / AVPT",
+      "RFPA": {
+        "meaning": "Recover, Field, Principal, Assumption",
+        "R_recover": "Every promotion must be able to recover the prior known-good state (reversible, non-destructive deploy posture).",
+        "F_field": "Changes are exercised in a real field/environment (develop -> preview -> main) before promotion.",
+        "P_principal": "A single accountable principal owns each promotion decision (solo-operator today; scales to CODEOWNERS).",
+        "A_assumption": "Assumptions behind a promotion are written down in the A/V/P/T log and re-checked each cycle."
+      },
+      "AVPT": {
+        "meaning": "Attempt, Validate, Preserve, Track",
+        "attempt": "One deployment mutation per Attempt (single reversible change per cycle).",
+        "validate": "Validate via CI and/or environment evidence (preview deploy health, checks, manual smoke of the PWA per DEPLOYMENT.md 'Verifying a deployment').",
+        "preserve": "Preserve the highest known-good deploy/rollback state (record the last-good commit/deploy id; keep it re-deployable).",
+        "track": "Track the delta and evidence before the next cycle."
+      },
+      "gates": [
+        "At least one AVPT cycle MUST be completed and logged before any merge/promotion.",
+        "No cycle N+1 promotion until cycle N has a written A/V/P/T log.",
+        "Preserve a reversible / non-destructive deployment posture at all times (static host: keep previous deploy re-promotable / instant rollback enabled).",
+        "Promotion order is develop -> preview -> main; main promotion requires a preview A/V/P/T log referencing the candidate commit."
+      ],
+      "avpt_log_location_proposed": "docs/releases/AVPT-<cycle>-<yyyymmdd>.md (proposed; not yet present in repo)"
+    },
+    "status_checks_reality": {
+      "finding": "CI is now implemented in .github/workflows/ci.yml. It emits four deterministic, secret-free, network-free status-check contexts whose names equal the job names: `html-validate`, `catalog-schema`, `link-check`, `sw-cache-bump`. The *.yml/*.yaml files under artifacts/ remain downloadable console CONTENT and are NOT workflows that run on this repo.",
+      "enforced_matrix": {
+        "develop": ["html-validate", "catalog-schema"],
+        "preview": ["html-validate", "catalog-schema", "link-check", "sw-cache-bump"],
+        "main": ["html-validate", "catalog-schema", "link-check", "sw-cache-bump"]
+      },
+      "note": "Contexts are matched by name without integration_id, so any app reporting the context satisfies it; the CI workflow is the only producer today. develop uses a non-strict policy (rapid feedback, no forced up-to-date); preview and main are strict (branch must be up to date before merge)."
+    },
+    "_implemented_status_checks": [
+      { "context": "html-validate", "job": "html-validate", "script": ".github/scripts/validate_html.py", "purpose": "App-shell HTML markup integrity (index.html, 404.html, v7.html)." },
+      { "context": "catalog-schema", "job": "catalog-schema", "script": ".github/scripts/validate_catalog.py", "purpose": "catalog.json shape + cross-refs + stats consistency." },
+      { "context": "link-check", "job": "link-check", "script": ".github/scripts/check_links.py", "purpose": "catalog/sw.js/manifest local references resolve (offline)." },
+      { "context": "sw-cache-bump", "job": "sw-cache-bump", "script": ".github/scripts/check_sw_cache_bump.py", "purpose": "CACHE key must change when a precached asset changes." }
+    ],
+    "_proposed_status_checks": {
+      "note": "STILL NOT ENFORCED. External, host-generated checks. Add to a ruleset only after connecting the platform and confirming the exact generated context name.",
+      "candidates": [
+        {
+          "proposed_context": "Vercel",
+          "purpose": "Vercel Git integration preview/production deploy status (external check).",
+          "requires": "Connect the repo in Vercel; the check context appears only once integration is enabled.",
+          "applies_to": ["preview", "main"]
+        },
+        {
+          "proposed_context": "netlify/odisena-console/deploy-preview",
+          "purpose": "Netlify Deploy Preview status (external check; exact context is host-generated).",
+          "requires": "Connect the repo in Netlify; confirm the generated context name before enforcing.",
+          "applies_to": ["preview"]
+        }
+      ]
+    },
+    "_proposed_required_deployments": {
+      "note": "NOT ENFORCED. Deploys currently target Vercel/Netlify/Cloudflare environments that are NOT registered as GitHub deployment environments. Once GitHub Environments named `preview` and `production` exist, a `required_deployments` rule can gate main on a successful `production` (or `preview`) deployment.",
+      "proposed": {
+        "preview": ["preview"],
+        "main": ["production"]
+      }
+    },
+    "_bypass_policy": {
+      "note": "actor_id for actor_type RepositoryRole is the numeric role id and MUST be verified for this repo before apply. Conventionally 5=Admin, 4=Maintain, 2=Write, 1=Read. The apply script prints a reminder. On a user-owned (non-org) repo there is no OrganizationAdmin actor.",
+      "rationale": "Solo-operator interim: an admin cannot approve their own PR, so a bypass is required to merge at all while there is a single maintainer. main/preview grant admin bypass ONLY in `pull_request` mode (bypass happens through a PR merge, not via direct pushes). develop grants `always` for fast integration. Tighten/remove bypass and raise main to a hard 2-reviewer gate once a second maintainer is onboarded."
+    }
+  },
+
+  "rulesets": [
+    {
+      "_target_env": "production promotion (console.odisena.com)",
+      "name": "odisena-main-production",
+      "target": "branch",
+      "enforcement": "active",
+      "bypass_actors": [
+        {
+          "actor_id": 5,
+          "actor_type": "RepositoryRole",
+          "bypass_mode": "pull_request"
+        }
+      ],
+      "conditions": {
+        "ref_name": {
+          "include": ["refs/heads/main"],
+          "exclude": []
+        }
+      },
+      "rules": [
+        {
+          "type": "pull_request",
+          "parameters": {
+            "required_approving_review_count": 2,
+            "dismiss_stale_reviews_on_push": true,
+            "require_code_owner_review": true,
+            "require_last_push_approval": true,
+            "required_review_thread_resolution": true,
+            "automatic_copilot_code_review_enabled": false,
+            "allowed_merge_methods": ["squash"]
+          }
+        },
+        {
+          "type": "required_status_checks",
+          "parameters": {
+            "strict_required_status_checks_policy": true,
+            "do_not_enforce_on_create": true,
+            "required_status_checks": [
+              { "context": "html-validate" },
+              { "context": "catalog-schema" },
+              { "context": "link-check" },
+              { "context": "sw-cache-bump" }
+            ]
+          }
+        },
+        { "type": "required_linear_history" },
+        { "type": "required_signatures" },
+        { "type": "non_fast_forward" },
+        { "type": "deletion" }
+      ]
+    },
+
+    {
+      "_target_env": "candidate validation / preview environment",
+      "name": "odisena-preview-candidate",
+      "target": "branch",
+      "enforcement": "active",
+      "bypass_actors": [
+        {
+          "actor_id": 5,
+          "actor_type": "RepositoryRole",
+          "bypass_mode": "pull_request"
+        }
+      ],
+      "conditions": {
+        "ref_name": {
+          "include": ["refs/heads/preview"],
+          "exclude": []
+        }
+      },
+      "rules": [
+        {
+          "type": "pull_request",
+          "parameters": {
+            "required_approving_review_count": 1,
+            "dismiss_stale_reviews_on_push": true,
+            "require_code_owner_review": false,
+            "require_last_push_approval": true,
+            "required_review_thread_resolution": true,
+            "automatic_copilot_code_review_enabled": false,
+            "allowed_merge_methods": ["squash", "merge"]
+          }
+        },
+        {
+          "type": "required_status_checks",
+          "parameters": {
+            "strict_required_status_checks_policy": true,
+            "do_not_enforce_on_create": true,
+            "required_status_checks": [
+              { "context": "html-validate" },
+              { "context": "catalog-schema" },
+              { "context": "link-check" },
+              { "context": "sw-cache-bump" }
+            ]
+          }
+        },
+        { "type": "required_linear_history" },
+        { "type": "non_fast_forward" },
+        { "type": "deletion" }
+      ]
+    },
+
+    {
+      "_target_env": "integration / rapid feedback",
+      "name": "odisena-develop-integration",
+      "target": "branch",
+      "enforcement": "active",
+      "bypass_actors": [
+        {
+          "actor_id": 5,
+          "actor_type": "RepositoryRole",
+          "bypass_mode": "always"
+        }
+      ],
+      "conditions": {
+        "ref_name": {
+          "include": ["refs/heads/develop"],
+          "exclude": []
+        }
+      },
+      "rules": [
+        {
+          "type": "pull_request",
+          "parameters": {
+            "required_approving_review_count": 0,
+            "dismiss_stale_reviews_on_push": false,
+            "require_code_owner_review": false,
+            "require_last_push_approval": false,
+            "required_review_thread_resolution": false,
+            "automatic_copilot_code_review_enabled": false,
+            "allowed_merge_methods": ["squash", "merge", "rebase"]
+          }
+        },
+        {
+          "type": "required_status_checks",
+          "parameters": {
+            "strict_required_status_checks_policy": false,
+            "do_not_enforce_on_create": true,
+            "required_status_checks": [
+              { "context": "html-validate" },
+              { "context": "catalog-schema" }
+            ]
+          }
+        },
+        { "type": "non_fast_forward" },
+        { "type": "deletion" }
+      ]
+    }
+  ]
+}
