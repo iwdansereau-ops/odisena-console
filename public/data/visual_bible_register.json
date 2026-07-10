@@ -1,37 +1,40 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "artifact_family": "visual_bible_asset_register_mirror",
-  "generated_at": "2026-07-09T01:21:00-04:00",
-  "generator": "manual_phase1_cross_thread_enhancement_rev_1_1_bump",
-  "source_of_truth": "odisena_visual_bible_asset_register_rev1_1_2026-07-08.xlsx",
-  "prior_source_of_truth": "odisena_visual_bible_asset_register_2026-07-08.xlsx",
-  "revision": "1.3",
-  "revision_header": "Winfield Designs · Revision 1.3 · 2026-07-09 · Source: Odisena Design Review + v8-am-036 Product Set",
+  "generated_at": "2026-07-09T22:36:00-04:00",
+  "generator": "manual_rev_1_4_console_mirror_refresh_2026-07-09_2236ET",
+  "source_of_truth": "odisena_visual_bible_asset_register_rev1_4_2026-07-09.xlsx",
+  "prior_source_of_truth": "odisena_visual_bible_asset_register_rev1_3_2026-07-09.xlsx",
+  "revision": "1.4",
+  "revision_header": "Winfield Designs · Revision 1.4 · 2026-07-09 · Source: Odisena Design Review + v8-am-036 Product Set",
   "revision_lineage": [
     {"revision": "1.0", "date": "2026-07-08", "scope": "initial 30-asset register"},
     {"revision": "1.1", "date": "2026-07-08", "scope": "adds ODS-VB-031..036 Civic Ark product line under v8-am-036", "amendment": "v8-am-036"},
     {"revision": "1.2", "date": "2026-07-09", "scope": "live-site deploy/patch notes on odisena.com/boards (commits 9bfe139, 857f7f9) + 3 Distribution Log entries", "locality": "Space xlsx only (no patch note authored at rev 1.2)"},
-    {"revision": "1.3", "date": "2026-07-09", "scope": "union of Thread A (board rebuild — Distribution Log entries) + Thread B (rev 1.2 content); canonical head", "patch_note": "odisena_visual_bible_register_patch_note_rev1_3_2026-07-09.md", "supersedes": ["1.1", "1.2"]}
+    {"revision": "1.3", "date": "2026-07-09", "scope": "union of Thread A (board rebuild — Distribution Log entries) + Thread B (rev 1.2 content); canonical head", "patch_note": "odisena_visual_bible_register_patch_note_rev1_3_2026-07-09.md", "supersedes": ["1.1", "1.2"]},
+    {"revision": "1.4", "date": "2026-07-09", "scope": "adds Civic Ark sales rows ODS-VB-037..040 (CEO Sales Playbook, Segment Outreach Kit, Outreach Log, Provenance Dossier); extends summary layer_counts (sales 4→8, ops 7→7, mythic 4→3 — Mythic/Eng row reclassified in register); Distribution Log grows from 10 to 16 rows", "patch_note": "odisena_visual_bible_register_patch_note_rev1_4_2026-07-09.md", "supersedes": ["1.1", "1.2", "1.3"], "external_send_caveat": "ODS-VB-031 noted external-send license/NDA caveat"}
   ],
-  "distribution_log_entries": 10,
+  "distribution_log_entries": 16,
   "companion_artifacts": {
     "consolidated_rebuild_notes": "odisena_board_rebuild_notes_2026-07-08.md",
     "zip_archive": "Odisena_Rebuilt_Boards_2026-07-08.zip",
     "gdrive_register_file_id": "1fQfE4JUH2k-MfIrkUnqEYSQ2ut4PUV9G",
     "gdrive_notes_file_id": "11sq-Rj8slv3tENR_fjsFHcpaJCs_gQUy",
-    "gdrive_zip_file_id": "1NvdX1YETekLArpI0UQO900HPPUwoclQf"
+    "gdrive_zip_file_id": "1NvdX1YETekLArpI0UQO900HPPUwoclQf",
+    "gdrive_register_filename": "odisena_visual_bible_asset_register_rev1_4_2026-07-09.xlsx"
   },
   "superseded_snapshots": [
     "odisena_visual_bible_asset_register_rev1_1_2026-07-08.xlsx",
-    "odisena_visual_bible_asset_register_rev1_2_2026-07-09.xlsx"
+    "odisena_visual_bible_asset_register_rev1_2_2026-07-09.xlsx",
+    "odisena_visual_bible_asset_register_rev1_3_2026-07-09.xlsx"
   ],
   "engineering_template_id": "ODS-ENG-TEMPLATE-1.0",
   "engineering_template_source": "odisena_atn_engineering_style_guide_2026-07-08.md",
   "visual_system_authority": "v8-am-035",
   "product_line_authority": "v8-am-036",
   "summary": {
-    "total_assets": 36,
-    "active": 22,
+    "total_assets": 40,
+    "active": 26,
     "canonical": 3,
     "rebuilt_rev_2": 8,
     "patched": 1,
@@ -40,7 +43,7 @@
       "engineering": 21,
       "mythic": 4,
       "ops": 7,
-      "sales": 4
+      "sales": 8
     }
   },
   "canonical_reference_boards": [
@@ -72,7 +75,11 @@
       {"asset_id": "ODS-VB-033", "title": "Civic Ark Investor Pitch Deck (8 slides + speaker notes)", "layer": "sales", "rev": "1.0", "status": "Active"},
       {"asset_id": "ODS-VB-034", "title": "Civic Ark Hero Render — Living Pitch interior", "layer": "sales", "rev": "1.0", "status": "Active"},
       {"asset_id": "ODS-VB-035", "title": "Civic Ark Exterior Dusk Render", "layer": "sales", "rev": "1.0", "status": "Active"},
-      {"asset_id": "ODS-VB-036", "title": "Civic Ark Cross-Section Wayfinding Diagram", "layer": "engineering", "rev": "1.0", "status": "Active"}
+      {"asset_id": "ODS-VB-036", "title": "Civic Ark Cross-Section Wayfinding Diagram", "layer": "engineering", "rev": "1.0", "status": "Active"},
+      {"asset_id": "ODS-VB-037", "title": "Civic Ark CEO Sales Playbook — Paul Kondratyev onboarding", "layer": "sales", "rev": "1.0", "status": "Active"},
+      {"asset_id": "ODS-VB-038", "title": "Civic Ark Segment Outreach Kit", "layer": "sales", "rev": "1.0", "status": "Active"},
+      {"asset_id": "ODS-VB-039", "title": "Civic Ark Outreach Log — tracking workbook", "layer": "sales", "rev": "1.0", "status": "Active"},
+      {"asset_id": "ODS-VB-040", "title": "Civic Ark Provenance Dossier", "layer": "sales", "rev": "1.0", "status": "Active"}
     ],
     "engineering_sheets": [
       {"id": "S-000", "title": "Cover Sheet & Index"},
@@ -86,13 +93,26 @@
       {"id": "S-800", "title": "District Recovery Radius"}
     ],
     "licensing_ladder_note": "Pricing ladder canonical, unchanged; details reside in prospectus artifact — not mirrored here (no sales-figure duplication in console).",
-    "kernel_alignment": "9-of-9 PASS per v8-am-036 §2"
+    "kernel_alignment": "9-of-9 PASS per v8-am-036 §2",
+    "external_send_caveat": "ODS-VB-031 (Engineering Set) — external sends require license/NDA per rev 1.4 patch note"
   },
   "distribution_log": [
     {"date": "2026-07-08", "channel": "Zip archive", "artifact": "OdisenaRebuiltBoards_2026-07-08.zip", "size_mb": 20},
     {"date": "2026-07-08", "channel": "Google Photos album", "artifact": "Odisena Visual Bible Rebuilt Boards Rev 2.0"},
     {"date": "2026-07-08", "channel": "Google Drive", "artifact": "OdisenaRebuiltBoards_2026-07-08.zip"},
-    {"date": "2026-07-08", "channel": "Civic Ark package v2", "artifact": "OdisenaCivicArkPackage_v2_2026-07-08.zip"}
+    {"date": "2026-07-08", "channel": "Civic Ark package v2", "artifact": "OdisenaCivicArkPackage_v2_2026-07-08.zip"},
+    {"date": "2026-07-08", "channel": "Notes revision", "artifact": "odisena_board_rebuild_notes_2026-07-08.md"},
+    {"date": "2026-07-09", "channel": "Live site deploy", "artifact": "odisena.com/boards — VITURE / Flourishing / Emoji Language", "commit": "9bfe139"},
+    {"date": "2026-07-09", "channel": "Live site patch", "artifact": "odisena.com/boards/biosphere — phone mockup '82% confidence'", "commit": "857f7f9"},
+    {"date": "2026-07-09", "channel": "Google Drive", "artifact": "odisena_visual_bible_asset_register_rev1_4_2026-07-09.xlsx", "file_id": "1fQfE4JUH2k-MfIrkUnqEYSQ2ut4PUV9G"},
+    {"date": "2026-07-09", "channel": "Register merge", "artifact": "Revision 1.3 (union of Thread A + Thread B lineages)"},
+    {"date": "2026-07-09", "channel": "Notes revision", "artifact": "odisena_board_rebuild_notes_2026-07-08.md"},
+    {"date": "2026-07-09", "channel": "Package sync", "artifact": "civic_ark_product_package.zip — rev 1.1 → 1.3 embedded, pricing/lineage verified"},
+    {"date": "2026-07-09", "channel": "Register enhancement", "artifact": "Revision 1.4 — added ODS-VB-037..040 Civic Ark sales rows; ODS-VB-031 external-send caveat noted"},
+    {"date": "2026-07-09", "channel": "Console mirror update", "artifact": "visual_bible_register.json — rev 1.3 (PR 9 merged squash c31245a8)", "commit": "c31245a8"},
+    {"date": "2026-07-09", "channel": "Known-information addendum", "artifact": "Revision 1.4 retained (1544 ET / 1547 ET / 2226 ET passes)"},
+    {"date": "2026-07-09", "channel": "Layer-2 routing", "artifact": "CCR-05 — Visual Bible assets & design set (CREATIVE) recorded in CCR v4 registry"},
+    {"date": "2026-07-09", "channel": "Console mirror update", "artifact": "visual_bible_register.json — rev 1.3 → 1.4 (this PR)", "source": "this PR"}
   ],
   "engineering_layer_conventions": {
     "voice": "calm_declarative_instrument_grade",
@@ -112,11 +132,12 @@
   "staleness": {
     "stale_after_hours": 336,
     "warning_after_hours": 168,
-    "current_status": "fresh"
+    "current_status": "fresh",
+    "last_refreshed": "2026-07-09T22:36:00-04:00"
   },
   "lineage": {
-    "predecessor_mirror": "visual_bible_register.json@1.0.0 (PR #4, commit 84ebd60a)",
-    "supersession_note": "rev 1.1 supersedes rev 1.0 non-destructively; earlier rows preserved verbatim; only Civic Ark rows appended and layer_counts extended",
-    "next_slot": "rev 1.2 available for successor amendments"
+    "predecessor_mirror": "visual_bible_register.json@1.1.0 (PR #9, squash commit c31245a8) — rev 1.3, 36 assets, 10-entry distribution log",
+    "supersession_note": "rev 1.4 supersedes rev 1.3 non-destructively; all 36 prior rows preserved verbatim; only 4 Civic Ark sales rows appended (ODS-VB-037..040), summary sales layer_count 4→8, distribution log 10→16, revision_lineage extended with rev 1.4 entry, superseded_snapshots extended with rev 1.3 filename",
+    "next_slot": "rev 1.5 available for successor amendments"
   }
 }
