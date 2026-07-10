@@ -1,0 +1,62 @@
+name: ci
+
+# Static-PWA validation. No build step, no secrets, no network dependencies.
+# Each job's `name:` is the exact status-check context referenced by the branch
+# rulesets in .github/rulesets/odisena-branch-protection.rulesets.json.
+on:
+  push:
+    branches: [main, preview, develop]
+  pull_request:
+    branches: [main, preview, develop]
+  workflow_dispatch:
+
+# One in-flight run per branch/PR; cancel superseded runs.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  html-validate:
+    name: html-validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate app-shell HTML
+        run: python3 .github/scripts/validate_html.py
+
+  catalog-schema:
+    name: catalog-schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate catalog.json schema
+        run: python3 .github/scripts/validate_catalog.py
+
+  link-check:
+    name: link-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify local references resolve
+        run: python3 .github/scripts/check_links.py
+
+  sw-cache-bump:
+    name: sw-cache-bump
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so merge-base / before..head diffs are available.
+          fetch-depth: 0
+      - name: Self-test cache-bump logic
+        run: python3 test_sw_cache_bump.py
+        working-directory: .github/scripts
+      - name: Enforce service-worker cache-key bump
+        run: |
+          python3 .github/scripts/check_sw_cache_bump.py \
+            --event "${{ github.event_name }}" \
+            --base "${{ github.event.pull_request.base.sha || github.event.before }}" \
+            --head "${{ github.event.pull_request.head.sha || github.sha }}"

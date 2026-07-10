@@ -1,0 +1,9 @@
+# Code owners for Odisena Console.
+# CODEOWNERS cannot target a repository *role*, so it names the actual repo
+# owner/operator. Update when maintainers are added.
+#
+# NOTE: On `main`, require_code_owner_review is enabled in the branch ruleset.
+# Because the owner cannot approve their own PR, merges rely on the documented
+# solo-admin `pull_request`-mode bypass until a second maintainer exists.
+
+* @iwdansereau-ops
