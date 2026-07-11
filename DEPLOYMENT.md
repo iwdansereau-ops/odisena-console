@@ -139,6 +139,27 @@ automatically. There is nothing to run.
 > validation-only and the `avpt.yml` deploy step is an inert dry-run echo, so
 > neither touches these files today.
 
+### Preflight check
+
+The `pages-preflight` CI job guards the custom-domain publish against silent
+breakage. It runs `.github/scripts/pages_preflight.py`, which fails the build
+if `CNAME` is missing, malformed, or not exactly `console.odisena.com`, or if
+`.nojekyll`, `index.html`, or `404.html` is absent. Run it locally before
+touching the repo root:
+
+```bash
+# Offline: validate the committed files only (deterministic, no network).
+python3 .github/scripts/pages_preflight.py
+
+# Live: also cross-check the deployed Pages config (read-only; needs gh auth).
+# Verifies source == main/root, live custom domain, and Enforce HTTPS.
+python3 .github/scripts/pages_preflight.py --live
+```
+
+The live cross-check never mutates anything and never touches DNS; it SKIPs
+gracefully when `gh` is unavailable or unauthenticated. See
+[SECURITY.md](./SECURITY.md) for the domain-integrity policy.
+
 ## Option E — Any generic static host / nginx
 
 Copy the directory to your web root. Minimal nginx snippet:
