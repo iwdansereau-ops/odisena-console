@@ -24,7 +24,9 @@
 <link rel="preload" href="catalog.json" as="fetch" crossorigin="" />
 </head>
 <body>
-<div id="app" class="app">
+<a href="#main" class="skip-link">Skip to main content</a>
+<div id="app" class="app" role="main">
+<span id="main" tabindex="-1"></span>
   <!-- Home -->
   <section id="view-home" class="view view-active" data-view="home">
     <header class="hero">
@@ -40,8 +42,9 @@
             <div class="brand-sub">Engineering command center</div>
           </div>
         </div>
-        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark theme" aria-pressed="false" title="Toggle light / dark theme">
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <span class="visually-hidden" id="theme-toggle-text">Theme</span>
         </button>
       </div>
     </header>
@@ -87,6 +90,36 @@
       <h2 class="section-title">Recent work</h2>
       <div class="session-list" id="session-list-preview"></div>
     </div>
+
+    <div class="section">
+      <h2 class="section-title">About &amp; links</h2>
+      <div class="about-card">
+        <p class="about-intro">A read-only engineering portfolio that renders runbooks and lists build artifacts from OpenTelemetry performance, PostgreSQL RDS migration, and IAM security work.</p>
+        <div class="about-links">
+          <a class="about-link" href="https://odisena.com" target="_blank" rel="noopener noreferrer">
+            <span class="about-link-title">odisena.com</span>
+            <span class="about-link-sub">Main site ↗</span>
+          </a>
+          <a class="about-link" href="https://odisena-chronicle.vercel.app" target="_blank" rel="noopener noreferrer">
+            <span class="about-link-title">Odisena Chronicle</span>
+            <span class="about-link-sub">Project chronicle ↗</span>
+          </a>
+        </div>
+        <p class="about-attr">Created by Ian Winfield Dansereau.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="disclaimer" role="note">
+        <div class="disclaimer-title">About this console &amp; its data</div>
+        <ul>
+          <li>Static, installable web app. It stores no cookies and uses no <code>localStorage</code>, <code>sessionStorage</code>, or analytics — all state is in-memory.</li>
+          <li>It makes no external network calls; everything shown is served from this site.</li>
+          <li>Reports and datasets marked <span class="badge badge-sample">Sample</span> are synthetic demonstrations. They are illustrative and are not real incidents, findings, or production data.</li>
+          <li>Content is shared as an engineering portfolio and is provided as-is, without warranties or guarantees.</li>
+        </ul>
+      </div>
+    </div>
   </section>
 
   <!-- Runbooks list + reader -->
@@ -107,6 +140,7 @@
       <button class="back-btn" data-back>‹</button>
       <h1 id="reader-title">Runbook</h1>
     </header>
+    <div id="reader-banner" hidden></div>
     <article class="markdown" id="reader-body"></article>
   </section>
 
@@ -121,6 +155,15 @@
     </div>
     <div class="chip-row" id="artifact-chips"></div>
     <div class="artifact-list" id="artifact-list"></div>
+  </section>
+
+  <!-- Artifact detail / preview -->
+  <section id="view-artifact-detail" class="view" data-view="artifact-detail">
+    <header class="page-header">
+      <button class="back-btn" data-back aria-label="Back">‹</button>
+      <h1>Artifact</h1>
+    </header>
+    <div class="detail" id="artifact-detail-body"></div>
   </section>
 
   <!-- Sessions -->
@@ -142,19 +185,21 @@
       <h1>Ops</h1>
     </header>
     <div class="ops-content">
+      <p class="ops-note" role="note">Illustrative status view. It summarizes the <em>kinds</em> of automation built across these engineering sessions — it is not a live production feed and contains no real-time operational data.</p>
+
       <div class="ops-card">
-        <div class="ops-card-title">Scheduled tasks</div>
+        <div class="ops-card-title">Automation cadence</div>
         <div class="ops-item">
           <div class="ops-item-dot" style="background:#10b981"></div>
           <div>
-            <div class="ops-item-title">Monday plan-regression</div>
-            <div class="ops-item-sub">Weekly · staging pg_stat_statements top 20</div>
+            <div class="ops-item-title">Plan-regression check</div>
+            <div class="ops-item-sub">Weekly · query-plan drift review</div>
           </div>
         </div>
         <div class="ops-item">
           <div class="ops-item-dot" style="background:#10b981"></div>
           <div>
-            <div class="ops-item-title">OTel perf nightly</div>
+            <div class="ops-item-title">Performance nightly</div>
             <div class="ops-item-sub">Daily · drift analysis + scorecard</div>
           </div>
         </div>
@@ -162,38 +207,38 @@
           <div class="ops-item-dot" style="background:#f59e0b"></div>
           <div>
             <div class="ops-item-title">Cardinality review</div>
-            <div class="ops-item-sub">Weekly · sandbox drift audit</div>
+            <div class="ops-item-sub">Weekly · metric cardinality audit</div>
           </div>
         </div>
       </div>
 
       <div class="ops-card">
-        <div class="ops-card-title">Notion dashboards</div>
+        <div class="ops-card-title">Dashboards &amp; tracking</div>
         <div class="ops-item">
           <div class="ops-item-dot" style="background:#3b82f6"></div>
           <div>
-            <div class="ops-item-title">RDS Migration Monitoring</div>
-            <div class="ops-item-sub">Preflight runs · logged via log_preflight_to_notion.py</div>
+            <div class="ops-item-title">Migration monitoring</div>
+            <div class="ops-item-sub">RDS preflight run tracking</div>
           </div>
         </div>
         <div class="ops-item">
           <div class="ops-item-dot" style="background:#8b5cf6"></div>
           <div>
-            <div class="ops-item-title">SecReview (DDB policies)</div>
-            <div class="ops-item-sub">Asana workflow template</div>
+            <div class="ops-item-title">Security policy review</div>
+            <div class="ops-item-sub">IAM policy audit workflow</div>
           </div>
         </div>
         <div class="ops-item">
           <div class="ops-item-dot" style="background:#f59e0b"></div>
           <div>
-            <div class="ops-item-title">Operations Command Center</div>
-            <div class="ops-item-sub">Brain page · aggregated links</div>
+            <div class="ops-item-title">Operations overview</div>
+            <div class="ops-item-sub">Aggregated status links</div>
           </div>
         </div>
       </div>
 
       <div class="ops-card">
-        <div class="ops-card-title">GitHub workflows built</div>
+        <div class="ops-card-title">CI/CD workflows built</div>
         <div class="ops-tags" id="ops-workflows"></div>
       </div>
     </div>
@@ -210,7 +255,7 @@
   <button class="install-close" id="install-close" aria-label="Dismiss">×</button>
 </div>
 
-<nav class="tabbar" id="tabbar">
+<nav class="tabbar" id="tabbar" aria-label="Primary">
   <button class="tab tab-active" data-nav="home">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12L12 3l9 9M5 10v10h14V10"/></svg>
     <span>Home</span>
