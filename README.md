@@ -63,6 +63,21 @@ AWS S3 + CloudFront, and generic static hosts / nginx. Host config files
 (`vercel.json`, `netlify.toml`, `_headers`) are included and set sensible
 cache + security headers.
 
+### Custom-domain preflight
+
+Before/after any change to `CNAME`, `.nojekyll`, or DNS, run the read-only
+preflight to validate the `console.odisena.com` binding (CNAME integrity, DNS
+A/AAAA against GitHub Pages' address set, apex isolation, TLS, and HTTP):
+
+```bash
+python3 .github/scripts/preflight_domain.py         # offline (CI-safe)
+python3 .github/scripts/preflight_domain.py --live  # + network checks
+```
+
+Optional founder vanity aliases are **reported, never created**. See
+**[SECURITY.md](./SECURITY.md)** for the full domain-hardening and
+vulnerability-reporting policy.
+
 ## Updating content
 
 Add/replace files under `runbooks/` or `artifacts/`, update the matching entry

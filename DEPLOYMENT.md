@@ -139,6 +139,45 @@ automatically. There is nothing to run.
 > validation-only and the `avpt.yml` deploy step is an inert dry-run echo, so
 > neither touches these files today.
 
+### Custom-domain preflight (`console.odisena.com`)
+
+Before and after any change that touches `CNAME`, `.nojekyll`, or the DNS
+records for the custom domain, run the read-only preflight. It never mutates
+DNS, Pages settings, or repository state.
+
+```bash
+# Offline (runs in CI): validates the committed CNAME + .nojekyll only.
+python3 .github/scripts/preflight_domain.py
+
+# Live: also verifies DNS, TLS, HTTP, and apex isolation over the network.
+python3 .github/scripts/preflight_domain.py --live
+```
+
+The live run checks:
+
+| Check            | Expectation                                                        |
+| ---------------- | ------------------------------------------------------------------ |
+| `cname-file`     | `CNAME` is exactly `console.odisena.com` (bare host, one line)     |
+| `nojekyll`       | `.nojekyll` present                                                |
+| `dns-cname`      | `console.odisena.com` → `CNAME` → `iwdansereau-ops.github.io`      |
+| `dns-a`          | resolves to GitHub Pages A set `185.199.108–111.153`               |
+| `dns-aaaa`       | resolves to GitHub Pages AAAA set `2606:50c0:800{0..3}::153`        |
+| `apex-isolation` | apex `odisena.com` does **not** point at the Pages address set      |
+| `tls`            | served certificate SAN covers `console.odisena.com`                |
+| `http`           | site answers 200/redirect over HTTPS                               |
+| `alias:*`        | optional founder vanity aliases — reported present/absent only     |
+
+**Exit codes / statuses.** Any `FAIL` on a gating check exits non-zero.
+`SKIP` means the check could not run from the current host — e.g. a sandbox
+that blocks outbound TLS/HTTP will `SKIP` the `tls`/`http` probes while DNS
+still validates; that is an environment limit, not a site defect. `INFO`
+(founder aliases) never affects the exit code. Founder aliases are **reported,
+never created** — an absent alias is expected.
+
+To change the custom domain, edit `CNAME`, update DNS at the registrar, adjust
+the expected values at the top of `.github/scripts/preflight_domain.py`
+(`EXPECTED_HOST`, `EXPECTED_PAGES_TARGET`), and re-run `--live`.
+
 ## Option E — Any generic static host / nginx
 
 Copy the directory to your web root. Minimal nginx snippet:
