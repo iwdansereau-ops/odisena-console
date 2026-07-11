@@ -7,6 +7,7 @@
       "owner": "iwdansereau-ops",
       "name": "odisena-console",
       "custom_domain": "console.odisena.com",
+      "_custom_domain_note": "Production is GitHub Pages served at https://console.odisena.com/ via the committed CNAME file (that file IS the Pages custom-domain binding; keep it intact). This metadata records the retained binding only; DNS is managed outside this repo and no DNS mutation is authorized here (see DEPLOYMENT.md).",
       "topology": "solo-operator",
       "kind": "static-pwa-no-build"
     },
@@ -91,7 +92,7 @@
 
   "rulesets": [
     {
-      "_target_env": "production promotion (console.odisena.com)",
+      "_target_env": "production promotion (GitHub Pages served at console.odisena.com via committed CNAME)",
       "name": "odisena-main-production",
       "target": "branch",
       "enforcement": "active",

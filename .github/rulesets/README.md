@@ -17,7 +17,7 @@ via the GitHub REST API.
 | --------- | ----------------------------------- | ------------------------------ |
 | `develop` | integration / rapid feedback        | `odisena-develop-integration`  |
 | `preview` | candidate validation / preview      | `odisena-preview-candidate`    |
-| `main`    | production promotion (console.odisena.com) | `odisena-main-production` |
+| `main`    | production promotion (GitHub Pages at `console.odisena.com`) | `odisena-main-production` |
 
 ## Protection matrix
 

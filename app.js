@@ -411,6 +411,13 @@
     document.getElementById('install-close').addEventListener('click', () => banner.hidden = true);
   }
 
+  // Service worker registration (moved out of an inline <script> so the page's
+  // Content-Security-Policy can keep script-src 'self' without 'unsafe-inline').
+  // Same-origin, best-effort; the app works without it.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+
   // Init
   initTheme();
   initInstallBanner();

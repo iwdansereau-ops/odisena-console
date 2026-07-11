@@ -2,7 +2,7 @@
 """AVPT Preserve-beat state snapshot for the Odisena Console static PWA.
 
 Emits a deterministic, read-only JSON snapshot of the deploy-governing config
-state (Vercel / Netlify / Cloudflare headers, the PWA data index, and the
+state (the GitHub Pages publish surface, the PWA data index, and the
 service-worker cache key). It is the `snapshot_command` for the shared AVPT
 reusable workflow's Preserve step: it captures the "highest known-good"
 configuration surface so a promotion is reversible against a recorded baseline.
@@ -23,12 +23,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
-# Files that define how/what the static site deploys. These are the surfaces a
-# reversible promotion must be able to restore to a known-good baseline.
+# Files that define how/what the static site deploys on GitHub Pages. These are
+# the surfaces a reversible promotion must be able to restore to a known-good
+# baseline. GitHub Pages publishes the branch root verbatim (`.nojekyll`), so
+# the "deploy config" is the app entry points, the crawl/Jekyll toggles, and the
+# `CNAME` custom-domain binding (console.odisena.com); there are no host-specific
+# header/redirect files (Pages ignores them).
 CONFIG_FILES = [
-    "vercel.json",
-    "netlify.toml",
-    "_headers",
+    ".nojekyll",
+    "CNAME",
+    "robots.txt",
     "catalog.json",
     "manifest.webmanifest",
     "sw.js",
@@ -82,9 +86,9 @@ def main() -> int:
         "deploy": {
             "type": "static",
             "build_step": False,
-            "hosts": ["vercel", "netlify", "cloudflare-pages", "s3+cloudfront"],
+            "hosts": ["github-pages"],
             "reversible": True,
-            "note": "No build/server; rollback = re-promote the previous host deploy (see DEPLOYMENT.md).",
+            "note": "No build/server; Pages publishes the main branch root. Rollback = git revert the bad commit and merge to main (see DEPLOYMENT.md); there is no host-side deploy ledger to re-promote.",
         },
         "service_worker_cache": sw_cache_key(),
         "config_files": files,

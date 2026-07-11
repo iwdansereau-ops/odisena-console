@@ -3,11 +3,19 @@
 The Odisena Console is a **fully static** Progressive Web App. There is no
 build step, no server-side code, and no external network dependency — every
 asset (HTML, CSS, JS, the `marked` markdown parser, icons, runbooks, artifacts,
-and `catalog.json`) is bundled in this directory. You can host it on any static
-web host, an object store, or an internal file server.
+and `catalog.json`) is bundled in this directory.
 
-It no longer relies on any Perplexity sandbox / preview (`/computer/a`) URLs:
-all references are relative, so the site works identically from a domain root,
+**Production host: GitHub Pages.** The live site is published from the `main`
+branch root and served at **https://console.odisena.com/** through the committed
+`CNAME` file (see [Custom domain](#custom-domain-consoleodisenacom)). GitHub
+Pages is the single canonical host; the previous Vercel / Netlify / Cloudflare
+Pages / S3 config files (`vercel.json`, `netlify.toml`, `_headers`) have been
+removed because Pages does not read them, so they described protections that
+never actually applied in production. The app remains portable to any static
+host (see [Portability](#portability-other-static-hosts)), but Pages is what
+production assumptions are written against.
+
+All references are relative, so the site works identically from a domain root,
 a sub-path, or a static object store.
 
 ---
@@ -17,7 +25,7 @@ a sub-path, or a static object store.
 ```
 .
 ├── index.html              # App shell (hash-routed SPA)
-├── app.js                  # Client logic (deferred)
+├── app.js                  # Client logic (deferred; registers the service worker)
 ├── styles.css              # Styles (light/dark via prefers-color-scheme)
 ├── marked.min.js           # Bundled minimal markdown parser (no CDN)
 ├── catalog.json            # Data index: sessions, runbooks, artifacts, stats
@@ -25,150 +33,108 @@ a sub-path, or a static object store.
 ├── sw.js                   # Service worker (offline cache, same-origin only)
 ├── 404.html                # Static not-found fallback
 ├── robots.txt              # Crawler policy
+├── CNAME                   # Pages custom-domain binding (console.odisena.com)
+├── .nojekyll               # Disables Jekyll so files are served verbatim (Pages)
 ├── icons/                  # PWA + favicon assets
 ├── runbooks/               # Markdown runbooks rendered in-app
-├── artifacts/              # Downloadable artifacts (code, YAML, zips, HTML, PNG)
-├── vercel.json             # Vercel headers/cache config
-├── netlify.toml            # Netlify headers/cache config
-└── _headers                # Cloudflare Pages / Netlify headers config
+└── artifacts/              # Downloadable artifacts (code, YAML, zips, HTML, PNG)
 ```
+
+---
+
+## Security posture on GitHub Pages
+
+GitHub Pages **cannot set custom HTTP response headers.** That constrains what
+protections are available, so they are delivered in the ways Pages does support:
+
+| Protection | How it is delivered | Notes |
+| ---------- | ------------------- | ----- |
+| HTTPS + HSTS | Automatic (Pages enforces HTTPS and sends HSTS) | Nothing to configure. |
+| `X-Content-Type-Options: nosniff` | Automatic (Pages sends it) | Not settable via `<meta>`. |
+| Content-Security-Policy | `<meta http-equiv>` in `index.html` / `404.html` | Self-only policy; all app assets are same-origin. |
+| Referrer-Policy | `<meta name="referrer">` | `strict-origin-when-cross-origin`. |
+| Clickjacking (`X-Frame-Options` / CSP `frame-ancestors`) | **Not available** | Requires a response header; `frame-ancestors` is ignored in a `<meta>` CSP. **Accepted gap on Pages.** If framing protection becomes a hard requirement, front Pages with a CDN that can inject headers (e.g. Cloudflare) or move to a header-capable host. |
+
+The CSP intentionally keeps `script-src 'self'` (no `'unsafe-inline'`): the
+service-worker registration was moved from an inline `<script>` into `app.js`
+specifically so no inline script is required. `style-src` allows
+`'unsafe-inline'` only because a handful of presentational `style=""` attributes
+remain in the markup.
 
 ---
 
 ## Requirements for correct behavior
 
 1. **Serve over HTTPS** (or `http://localhost`) so the service worker registers.
-   The app still works without a service worker — offline caching is simply
-   disabled.
-2. **Serve `manifest.webmanifest` with a JSON-family content type.** Most hosts
-   do this automatically; the included config files set
-   `application/manifest+json` explicitly.
-3. **Do not long-cache `sw.js`.** The provided host configs set it to
-   `no-cache` so updates ship immediately. When you change any bundled asset,
-   bump the `CACHE` constant at the top of `sw.js` (currently `odisena-v2`).
-4. No cookies, `localStorage`, `sessionStorage`, or `indexedDB` are used —
-   all state is in-memory, so the app runs in restrictive/sandboxed contexts.
+   Pages provides HTTPS automatically. The app still works without a service
+   worker — offline caching is simply disabled.
+2. **Serve `manifest.webmanifest` with a JSON-family content type.** GitHub
+   Pages serves `.webmanifest` as `application/manifest+json` automatically.
+3. **Service-worker freshness is driven by the cache key, not headers.** Pages
+   applies its own short CDN caching to every file (including `sw.js`) and does
+   **not** honor a `no-cache` directive — so freshness cannot rely on cache
+   headers. Instead, whenever you change any precached asset (the `ASSETS`
+   array in `sw.js`), **bump the `CACHE` constant** at the top of `sw.js`
+   (currently `odisena-v4`). The `activate` handler deletes old caches, and the
+   `sw-cache-bump` CI check fails the PR if a precached asset changes without a
+   key bump. Returning clients pick up the new `sw.js` within the Pages CDN TTL.
+4. No cookies, `localStorage`, `sessionStorage`, or `indexedDB` are used — all
+   state is in-memory, so the app runs in restrictive/sandboxed contexts.
 
 ---
 
-## Option A — Vercel
+## Publishing a change (GitHub Pages)
 
-The repo already contains `vercel.json` (cache + security headers).
+Publishing is branch-based: **merge to `main` and Pages rebuilds the branch root
+automatically.** There is nothing to run.
 
-```bash
-npm i -g vercel          # if not installed
-cd odisena-console-hosted
-vercel                   # preview deploy
-vercel --prod            # production deploy
-```
+- **`.nojekyll`** must stay present so files (including any leading-underscore
+  paths) are served verbatim. Do not remove it.
+- The `ci.yml` checks are validation-only and the `avpt.yml` deploy step is an
+  inert dry-run echo, so neither touches the published files.
 
-No framework preset is needed — choose **"Other"** / static. Output directory
-is the project root (`.`).
+### Custom domain (`console.odisena.com`)
 
-## Option B — Netlify
+The live console is served at **https://console.odisena.com/**. The committed
+**`CNAME`** file contains exactly `console.odisena.com` (no scheme, no trailing
+slash, single line) and **is** the GitHub Pages custom-domain binding — keep it
+present and intact. If it is deleted, Pages falls back to the default
+`*.github.io` URL and the custom domain has to be re-entered by hand in
+**Settings → Pages**.
 
-`netlify.toml` sets `publish = "."` with no build command.
-
-```bash
-npm i -g netlify-cli
-cd odisena-console-hosted
-netlify deploy           # draft
-netlify deploy --prod    # production
-```
-
-Or drag-and-drop this folder into the Netlify UI ("Deploy manually").
-
-## Option C — Cloudflare Pages
-
-```bash
-npm i -g wrangler
-cd odisena-console-hosted
-wrangler pages deploy . --project-name odisena-console
-```
-
-Build command: *(none)*. Output directory: `.`. The included `_headers` file
-is applied automatically by Cloudflare Pages.
-
-## Option D — AWS S3 + CloudFront (static)
-
-```bash
-# 1. Create/choose a bucket and upload
-aws s3 sync . s3://YOUR_BUCKET --delete \
-  --exclude "DEPLOYMENT.md" --exclude "README.md"
-
-# 2. Set the correct content types / cache for the special files
-aws s3 cp sw.js s3://YOUR_BUCKET/sw.js \
-  --content-type "text/javascript" \
-  --cache-control "no-cache, no-store, must-revalidate"
-
-aws s3 cp manifest.webmanifest s3://YOUR_BUCKET/manifest.webmanifest \
-  --content-type "application/manifest+json" \
-  --cache-control "public, max-age=3600"
-```
-
-- Set the bucket's static-website **index document** to `index.html` and the
-  **error document** to `404.html`.
-- Front the bucket with CloudFront for HTTPS (required for the service worker).
-- Recommended cache behavior: long cache for `icons/*`, `*.css`, `*.js`;
-  short cache (or no-store) for `sw.js`, `index.html`, and `catalog.json`.
-
-## Option F — GitHub Pages (current production host for `console.odisena.com`)
-
-The live console at **https://console.odisena.com/** is served by **GitHub
-Pages**, published directly from the `main` branch root (`/`) — no build step
-and no deploy workflow. Two committed files make this work; **do not remove
-either one**, or the custom domain / build will break:
-
-- **`CNAME`** — contains exactly `console.odisena.com` (no scheme, no trailing
-  slash, single line). This file *is* the GitHub Pages custom-domain binding.
-  If it is deleted or edited, Pages drops back to the `*.github.io` default and
-  the custom domain must be re-entered by hand in **Settings → Pages**.
-- **`.nojekyll`** — disables Jekyll processing so every file (including any
-  leading-underscore paths) is served verbatim.
-
-DNS (managed outside this repo) points `console.odisena.com` via `CNAME` to
-`iwdansereau-ops.github.io`, which resolves to the GitHub Pages apex addresses
-`185.199.108–111.153`. HTTPS is provisioned automatically by GitHub and
-enforced (HTTP → HTTPS redirect).
-
-To publish a change: merge to `main`. Pages rebuilds from the branch root
-automatically. There is nothing to run.
-
-> Because publishing is branch-based, any tooling that rewrites the repo root
-> must keep `CNAME` and `.nojekyll` intact. The `ci.yml` checks are
-> validation-only and the `avpt.yml` deploy step is an inert dry-run echo, so
-> neither touches these files today.
-
-## Option E — Any generic static host / nginx
-
-Copy the directory to your web root. Minimal nginx snippet:
-
-```nginx
-location = /sw.js {
-    add_header Cache-Control "no-cache, no-store, must-revalidate";
-    add_header Service-Worker-Allowed "/";
-}
-location = /manifest.webmanifest {
-    types { application/manifest+json webmanifest; }
-    default_type application/manifest+json;
-}
-location / {
-    try_files $uri $uri/ /index.html;
-}
-```
+This retains an existing binding; it does **not** authorize any DNS change. The
+`console.odisena.com` DNS records are managed outside this repository, and
+committing/retaining the `CNAME` file touches no DNS provider. Do not modify DNS
+or Pages settings as part of this change.
 
 ---
 
-## Recommended caching summary
+## Rollback
 
-| Path                    | Cache-Control                               |
-| ----------------------- | ------------------------------------------- |
-| `sw.js`                 | `no-cache, no-store, must-revalidate`       |
-| `index.html`            | `public, max-age=0, must-revalidate`        |
-| `catalog.json`          | `public, max-age=300`                       |
-| `manifest.webmanifest`  | `public, max-age=3600`                      |
-| `*.css`, `*.js`         | `public, max-age=604800`                    |
-| `icons/*`               | `public, max-age=2592000, immutable`        |
+GitHub Pages has **no host-side deploy ledger to "promote a previous deploy."**
+Because publishing tracks the `main` branch root, rollback is a git operation:
+
+```bash
+git revert <bad-commit-sha>   # creates an inverse commit; non-destructive
+# open a PR, let CI pass, merge to main -> Pages republishes the prior state
+```
+
+Prefer `git revert` (which preserves history and passes the required checks)
+over force-pushing `main`, which is blocked by branch protection anyway. The
+linear-history + squash-only rule on `main` keeps one commit per change, so the
+last known-good state is a single revertible ref.
+
+---
+
+## Verifying a deployment
+
+- Open the site; confirm the home stats (Sessions / Runbooks / Artifacts) load.
+- Open **Runbooks**, click any item — markdown should render.
+- Open **Artifacts**, open one and use its explicit download action.
+- DevTools → Application → Service Workers: `odisena-v4` should be active.
+- DevTools → Application → Manifest: no errors, icons resolve.
+- DevTools → Console: no Content-Security-Policy violations.
+- Toggle airplane mode / offline and reload — the shell should still open.
 
 ---
 
@@ -179,16 +145,17 @@ directories. To change what the app shows:
 
 1. Add/replace files under `runbooks/` or `artifacts/`.
 2. Update the matching entry in `catalog.json` (keep `path` relative).
-3. Bump the `CACHE` constant in `sw.js` so clients refetch.
-4. Re-deploy.
+3. Bump the `CACHE` constant in `sw.js` so clients refetch (CI enforces this).
+4. Merge to `main`.
 
 ---
 
-## Verifying a deployment
+## Portability (other static hosts)
 
-- Open the site; confirm the home stats (Sessions / Runbooks / Artifacts) load.
-- Open **Runbooks**, click any item — markdown should render.
-- Open **Artifacts**, confirm files download.
-- Check DevTools → Application → Service Workers: `odisena-v2` should be active.
-- Check DevTools → Application → Manifest: no errors, icons resolve.
-- Toggle airplane mode / offline and reload — the shell should still open.
+The app is host-agnostic and will run from any static host, object store, or
+`nginx` root — copy the directory to the web root and serve `index.html` as the
+index and `404.html` as the error document over HTTPS. If you move to a
+header-capable host, that host can add the response headers Pages cannot
+(`X-Frame-Options`, `Cache-Control`, etc.); those are deployment-environment
+concerns and are intentionally not re-introduced as committed config files,
+since production is GitHub Pages.
