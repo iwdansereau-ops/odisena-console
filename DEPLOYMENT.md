@@ -112,6 +112,33 @@ aws s3 cp manifest.webmanifest s3://YOUR_BUCKET/manifest.webmanifest \
 - Recommended cache behavior: long cache for `icons/*`, `*.css`, `*.js`;
   short cache (or no-store) for `sw.js`, `index.html`, and `catalog.json`.
 
+## Option F — GitHub Pages (current production host for `console.odisena.com`)
+
+The live console at **https://console.odisena.com/** is served by **GitHub
+Pages**, published directly from the `main` branch root (`/`) — no build step
+and no deploy workflow. Two committed files make this work; **do not remove
+either one**, or the custom domain / build will break:
+
+- **`CNAME`** — contains exactly `console.odisena.com` (no scheme, no trailing
+  slash, single line). This file *is* the GitHub Pages custom-domain binding.
+  If it is deleted or edited, Pages drops back to the `*.github.io` default and
+  the custom domain must be re-entered by hand in **Settings → Pages**.
+- **`.nojekyll`** — disables Jekyll processing so every file (including any
+  leading-underscore paths) is served verbatim.
+
+DNS (managed outside this repo) points `console.odisena.com` via `CNAME` to
+`iwdansereau-ops.github.io`, which resolves to the GitHub Pages apex addresses
+`185.199.108–111.153`. HTTPS is provisioned automatically by GitHub and
+enforced (HTTP → HTTPS redirect).
+
+To publish a change: merge to `main`. Pages rebuilds from the branch root
+automatically. There is nothing to run.
+
+> Because publishing is branch-based, any tooling that rewrites the repo root
+> must keep `CNAME` and `.nojekyll` intact. The `ci.yml` checks are
+> validation-only and the `avpt.yml` deploy step is an inert dry-run echo, so
+> neither touches these files today.
+
 ## Option E — Any generic static host / nginx
 
 Copy the directory to your web root. Minimal nginx snippet:

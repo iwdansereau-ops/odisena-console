@@ -54,10 +54,14 @@ The service worker registers on `http://localhost` and any HTTPS origin.
 
 ## Deploy
 
-See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for step-by-step instructions for
-Vercel, Netlify, Cloudflare Pages, AWS S3 + CloudFront, and generic
-static hosts / nginx. Host config files (`vercel.json`, `netlify.toml`,
-`_headers`) are included and set sensible cache + security headers.
+The live console at **https://console.odisena.com/** is served by **GitHub
+Pages** from the `main` branch root; the committed `CNAME` and `.nojekyll`
+files drive the custom domain and must not be removed. See
+**[DEPLOYMENT.md](./DEPLOYMENT.md)** for the GitHub Pages details plus
+step-by-step instructions for Vercel, Netlify, Cloudflare Pages,
+AWS S3 + CloudFront, and generic static hosts / nginx. Host config files
+(`vercel.json`, `netlify.toml`, `_headers`) are included and set sensible
+cache + security headers.
 
 ## Updating content
 
