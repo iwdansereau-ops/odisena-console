@@ -246,6 +246,36 @@
         <div class="v7-skel w40"></div>
       </div>
     </section>
+
+    <section class="v7-panel wide" id="panel-layer1-lineage" aria-labelledby="layer1-lineage-heading">
+      <div class="v7-panel-head">
+        <div>
+          <h2 id="layer1-lineage-heading">Layer-1 Lineage</h2>
+          <div class="v7-panel-sub">v9-A canonical · v9-B and v8 preserved as historical peers · collision resolution 2026-07-09 03:55 ET</div>
+        </div>
+        <button class="v7-panel-copy" type="button" data-copy="public/data/layer1_lineage.json" aria-label="Copy JSON path">📋 path</button>
+      </div>
+      <div id="layer1-lineage-body" aria-busy="true">
+        <div class="v7-skel w80"></div>
+        <div class="v7-skel w60"></div>
+        <div class="v7-skel w40"></div>
+      </div>
+    </section>
+
+    <section class="v7-panel wide" id="panel-execution-tracks" aria-labelledby="execution-tracks-heading">
+      <div class="v7-panel-head">
+        <div>
+          <h2 id="execution-tracks-heading">Execution Tracks</h2>
+          <div class="v7-panel-sub">advisory status flags · authoritative source in Space · NO filing/signature/engagement authorized by console</div>
+        </div>
+        <button class="v7-panel-copy" type="button" data-copy="public/data/execution_tracks.json" aria-label="Copy JSON path">📋 path</button>
+      </div>
+      <div id="execution-tracks-body" aria-busy="true">
+        <div class="v7-skel w80"></div>
+        <div class="v7-skel w60"></div>
+        <div class="v7-skel w40"></div>
+      </div>
+    </section>
   </div>
 
   <div class="v7-lineage" style="margin-top: 24px; text-align: center;">
@@ -424,7 +454,8 @@
     if (d.v8_amendments) {
       var v8 = d.v8_amendments;
       var ords = v8.sibling_ordinals_since_v8am036 || [];
-      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">v8 amendment chain (ceiling ' + safeVal(v8.ceiling) + ', ' + ords.length + ' since v8-am-036)</div>';
+      var v8Title = v8.chain_status ? ("v8 amendment chain — " + safeVal(v8.chain_status) + " (" + ords.length + " since v8-am-036)") : ("v8 amendment chain (ceiling " + safeVal(v8.ceiling) + ", " + ords.length + " since v8-am-036)");
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">' + v8Title + '</div>';
       if (v8.authored_this_thread && v8.authored_this_thread.length) {
         html += row("This-thread", v8.authored_this_thread.join(", "));
       }
@@ -435,8 +466,57 @@
         var localityCls = (a.locality || "").replace(/[^a-z0-9_-]/gi, "_");
         html += row(a.id, '<span class="v7-badge ' + localityCls + '">' + safeVal(a.locality) + "</span> " + safeVal(a.at) + " · " + safeVal(a.topic));
       });
-      if (v8.next_free_ordinal) html += row("Next free", v8.next_free_ordinal);
+      if (v8.non_claiming_refusals && v8.non_claiming_refusals.length) {
+        html += row("Non-claiming refusals", v8.non_claiming_refusals.length + " filings · 0 ordinals consumed");
+      }
+      if (v8.successor_status) html += row("Successor status", v8.successor_status);
+      if (v8.closure_context) html += row("Closure context", v8.closure_context);
+      if (v8.next_free_ordinal) html += row("Next free (historical)", v8.next_free_ordinal);
       if (v8.safety_boundary) html += row("Safety boundary", v8.safety_boundary);
+      html += "</div>";
+    }
+
+    if (d.v9_canonical_layer1) {
+      var v9c = d.v9_canonical_layer1;
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">v9 canonical Layer-1 (' + safeVal(v9c.canonical_designation) + ')</div>';
+      if (v9c.canonical_artifact) html += row("Canonical artifact", v9c.canonical_artifact);
+      if (v9c.ratified_at) html += row("Ratified at", v9c.ratified_at);
+      if (v9c.ratification) html += row("Ratification", v9c.ratification);
+      if (v9c.collision_record && v9c.collision_record.resolution) {
+        var cr = v9c.collision_record.resolution;
+        html += row("Collision resolution", safeVal(cr.at) + " · winner: " + safeVal(cr.winner) + " · " + safeVal(cr.loser_disposition));
+      }
+      if (v9c.regeneration_halt_marker && v9c.regeneration_halt_marker.at) {
+        html += row("Regeneration halt", safeVal(v9c.regeneration_halt_marker.at) + " · " + safeVal(v9c.regeneration_halt_marker.role));
+      }
+      if (v9c.predecessor_bridge && v9c.predecessor_bridge.artifact) {
+        html += row("Predecessor bridge", safeVal(v9c.predecessor_bridge.artifact) + " (" + safeVal(v9c.predecessor_bridge.class) + ")");
+      }
+      if (v9c.held_candidate_register_state) {
+        var hcr = v9c.held_candidate_register_state;
+        Object.keys(hcr).forEach(function(k) { html += row("Held candidate " + k, safeVal(hcr[k])); });
+      }
+      if (v9c.safety_boundary) html += row("Safety boundary", v9c.safety_boundary);
+      html += "</div>";
+    }
+
+    if (d.v9_amendments) {
+      var v9a = d.v9_amendments;
+      var v9ords = v9a.sibling_ordinals || [];
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">v9 amendment chain (' + v9ords.length + ' LIVE)</div>';
+      if (v9a.parent_layer1) html += row("Parent Layer-1", v9a.parent_layer1);
+      if (v9a.chain_started_at) html += row("Chain started", v9a.chain_started_at);
+      v9ords.forEach(function(a) {
+        html += row(a.id, safeVal(a.at) + " · " + safeVal(a.topic));
+      });
+      if (v9a.route_to_canonical_markers && v9a.route_to_canonical_markers.length) {
+        v9a.route_to_canonical_markers.forEach(function(m) {
+          html += row("Route-to-canonical marker", safeVal(m.at) + " · " + safeVal(m.topic));
+        });
+      }
+      if (v9a.next_free_ordinal) html += row("Next free", v9a.next_free_ordinal);
+      if (v9a.emission_gate) html += row("Emission gate", v9a.emission_gate);
+      if (v9a.safety_boundary) html += row("Safety boundary", v9a.safety_boundary);
       html += "</div>";
     }
 
@@ -606,6 +686,126 @@
     el.setAttribute("aria-busy", "false");
   }
 
+  function renderLayer1Lineage(d) {
+    var html = "";
+    if (d.current_canonical) {
+      var cc = d.current_canonical;
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Current canonical (' + safeVal(cc.designation) + ')</div>';
+      if (cc.artifact) html += row("Artifact", cc.artifact);
+      if (cc.ratified_at) html += row("Ratified at", cc.ratified_at);
+      if (cc.ratification_mechanism) html += row("Mechanism", cc.ratification_mechanism);
+      if (cc.authoring_session) html += row("Authoring session", cc.authoring_session);
+      if (cc.election_form) html += row("Election form", cc.election_form);
+      if (cc.size_bytes) html += row("Size", cc.size_bytes + " bytes");
+      html += "</div>";
+    }
+    if (d.historical_peers && d.historical_peers.length) {
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Historical peers (' + d.historical_peers.length + ')</div>';
+      d.historical_peers.forEach(function(p) {
+        html += row(safeVal(p.designation), safeVal(p.class) + " · " + safeVal(p.artifact));
+        if (p.disposition) html += row("→ disposition", p.disposition);
+      });
+      html += "</div>";
+    }
+    if (d.transition_record) {
+      var tr = d.transition_record;
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Transition record</div>';
+      if (tr.event) html += row("Event", tr.event);
+      if (tr.collision_routing_marker) html += row("Routing marker", safeVal(tr.collision_routing_marker.at) + " · " + safeVal(tr.collision_routing_marker.role));
+      if (tr.collision_resolution) {
+        var res = tr.collision_resolution;
+        html += row("Resolution", safeVal(res.at) + " · winner: " + safeVal(res.winner) + " · loser: " + safeVal(res.loser_disposition));
+      }
+      if (tr.regeneration_halt) html += row("Regeneration halt", safeVal(tr.regeneration_halt.at) + " · " + safeVal(tr.regeneration_halt.role));
+      html += "</div>";
+    }
+    if (d.v_class_history && d.v_class_history.length) {
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">v-class history</div>';
+      d.v_class_history.forEach(function(v) {
+        var suffix = v.amendment_ceiling ? (" · ceiling " + v.amendment_ceiling) : "";
+        if (v.chain_status) suffix += " · " + v.chain_status;
+        if (v.next_free) suffix += " · next-free " + v.next_free;
+        if (v.note) suffix += " · " + v.note;
+        html += row(safeVal(v.class), safeVal(v.state) + suffix);
+      });
+      html += "</div>";
+    }
+    if (d.advisory_bridges && d.advisory_bridges.length) {
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Advisory bridges (non-live)</div>';
+      d.advisory_bridges.forEach(function(b) {
+        html += row(safeVal(b.artifact), safeVal(b.class));
+        if (b.role) html += row("→ role", b.role);
+        if (b.reclassified_as) html += row("→ reclassified as", b.reclassified_as);
+      });
+      html += "</div>";
+    }
+    if (d.future_emission_rules) {
+      var fer = d.future_emission_rules;
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Future emission rules</div>';
+      if (fer.future_headers_must_cite) html += row("Headers must cite", fer.future_headers_must_cite);
+      if (fer.future_amendment_gate) html += row("Amendment gate", fer.future_amendment_gate);
+      if (fer.historical_peer_preservation) html += row("Peer preservation", fer.historical_peer_preservation);
+      html += "</div>";
+    }
+    if (d.safety_boundary) {
+      html += '<div class="v7-subgroup">' + row("Safety boundary", d.safety_boundary) + "</div>";
+    }
+    var el = document.getElementById("layer1-lineage-body");
+    el.innerHTML = html;
+    el.setAttribute("aria-busy", "false");
+  }
+
+  function renderExecutionTracks(d) {
+    var html = "";
+    if (d.authoritative_boundary_note) {
+      html += '<div class="v7-subgroup">' + row("⚠ Boundary", d.authoritative_boundary_note) + "</div>";
+    }
+    if (d.operating_command) {
+      html += '<div class="v7-subgroup">' + row("Operating command", d.operating_command) + "</div>";
+    }
+    if (d.tracks && d.tracks.length) {
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Tracks (' + d.tracks.length + ')</div>';
+      d.tracks.forEach(function(t) {
+        html += row(safeVal(t.id) + " · " + safeVal(t.name), '<span class="v7-badge">' + safeVal(t.status) + "</span> " + safeVal(t.class));
+        if (t.authoritative_source) html += row("→ source", t.authoritative_source);
+        if (t.authoritative_sources && t.authoritative_sources.length) html += row("→ sources", t.authoritative_sources.join(" · "));
+        if (t.current_directives && t.current_directives.length) html += row("→ directives", t.current_directives.join(" · "));
+        if (t.gating) html += row("→ gating", t.gating);
+        if (t.posture) html += row("→ posture", t.posture);
+        if (t.warning) html += row("⚠ warning", t.warning);
+      });
+      html += "</div>";
+    }
+    if (d.advisory_synthesis) {
+      var asyn = d.advisory_synthesis;
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Advisory synthesis (non-canonical)</div>';
+      if (asyn.artifact) html += row("Artifact", asyn.artifact);
+      if (asyn.class) html += row("Class", asyn.class);
+      if (asyn.role) html += row("Role", asyn.role);
+      html += "</div>";
+    }
+    if (d.asset_evidence_index) {
+      var aei = d.asset_evidence_index;
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Asset & evidence index (navigation)</div>';
+      if (aei.artifact) html += row("Artifact", aei.artifact);
+      if (aei.role) html += row("Role", aei.role);
+      html += "</div>";
+    }
+    if (d.held_refusals && d.held_refusals.length) {
+      html += '<div class="v7-subgroup"><div class="v7-subgroup-title">Held refusals (' + d.held_refusals.length + ')</div>';
+      d.held_refusals.forEach(function(r, i) {
+        html += row("#" + (i + 1), r);
+      });
+      html += "</div>";
+    }
+    if (d.safety_boundary) {
+      html += '<div class="v7-subgroup">' + row("Safety boundary", d.safety_boundary) + "</div>";
+    }
+    var el = document.getElementById("execution-tracks-body");
+    el.innerHTML = html;
+    el.setAttribute("aria-busy", "false");
+  }
+
   function renderOidcDrift(d) {
     var html = "";
     var task = d.source_task || {};
@@ -692,7 +892,9 @@
     "llm-registry-body": ["public/data/llm_module_registry.json", renderLlmRegistry],
     "visual-bible-body": ["public/data/visual_bible_register.json", renderVisualBible],
     "openai-gates-body": ["public/data/openai_responses_gate_ladder.json", renderOpenAIGates],
-    "oidc-drift-body": ["public/data/oidc_drift_registry.json", renderOidcDrift]
+    "oidc-drift-body": ["public/data/oidc_drift_registry.json", renderOidcDrift],
+    "layer1-lineage-body": ["public/data/layer1_lineage.json", renderLayer1Lineage],
+    "execution-tracks-body": ["public/data/execution_tracks.json", renderExecutionTracks]
   };
 
   function loadAll() {

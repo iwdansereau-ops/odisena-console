@@ -81,10 +81,51 @@
       {"id": "v8-am-038", "at": "2026-07-09T02:04:00-04:00", "locality": "adjacent-thread", "topic": "Omnibus F.1–F.9 doctrine codification", "status": "LIVE"},
       {"id": "v8-am-039", "at": "2026-07-09T02:08:00-04:00", "locality": "adjacent-thread", "topic": "Reading V co-codification · multi-reading canonical glyph doctrine", "status": "LIVE"},
       {"id": "v8-am-040", "at": "2026-07-09T02:26:00-04:00", "locality": "adjacent-thread", "topic": "E.2 pure-glyph wire classification", "status": "LIVE"},
-      {"id": "v8-am-041", "at": "2026-07-09T02:29:00-04:00", "locality": "adjacent-thread", "topic": "A.3 resolved by E.2 disposition", "status": "LIVE"}
+      {"id": "v8-am-041", "at": "2026-07-09T02:29:00-04:00", "locality": "adjacent-thread", "topic": "A.3 resolved by E.2 disposition", "status": "LIVE"},
+      {"id": "v8-am-042", "at": "2026-07-09T03:30:00-04:00", "locality": "adjacent-thread", "topic": "CCR-08/CCR-10 split-brain DNS bridge", "status": "LIVE"},
+      {"id": "v8-am-043", "at": "2026-07-09T03:41:00-04:00", "locality": "adjacent-thread", "topic": "Cluster 19 sigil-marker consolidation close", "status": "LIVE"}
     ],
     "reconciliation_authority": "odisena_ordinal_reconciliation_v8am037_live_2026-07-09_0200ET.md",
-    "next_free_ordinal": "v8-am-042 (unallocated)",
+    "chain_status": "CLOSED at v8-am-043",
+    "closure_context": "v8 chain closed as historical peer under v9-A canonicalization (per odisena_civic_ark_package_sync_note_2_2026-07-09.md and layer1 successor reconciliation enhanced 15:33 ET)",
+    "non_claiming_refusals": [
+      {"at": "2026-07-09T03:39:00-04:00", "topic": "single collision allocation-refusal", "ordinals_consumed": 0},
+      {"at": "2026-07-09T03:52:00-04:00", "topic": "double collision allocation-refusal", "ordinals_consumed": 0}
+    ],
+    "successor_status": "v8 preserved as historical peer under v9-A canonical Layer-1",
     "safety_boundary": "IDs and one-line topics only. NO doctrine bodies, NO Reading V/W/X internals, NO clause bodies, NO glyph tables. Cross-thread merge index is Layer-1 anchor odisena_like_thread_merge_index_v8.md."
+  },
+  "v9_canonical_layer1": {
+    "canonical_artifact": "odisena_like_thread_merge_index_v9_2026-07-09_0336ET.md",
+    "canonical_designation": "v9-A",
+    "ratification": "§4c operator override citation-graph-authoritative (per §4.5 earliest-timestamp rule)",
+    "ratified_at": "2026-07-09T03:36:00-04:00",
+    "collision_record": {
+      "routing_marker": {"at": "2026-07-09T03:54:00-04:00", "artifact": "odisena_v9_collision_routing_marker_2026-07-09_0354ET.md"},
+      "resolution": {"at": "2026-07-09T03:55:00-04:00", "artifact": "odisena_v9_collision_resolution_concurrence_acknowledgment_2026-07-09_0355ET.md", "winner": "v9-A", "loser_disposition": "v9-B preserved as v9-eqv historical peer"}
+    },
+    "regeneration_halt_marker": {"at": "2026-07-09T03:49:00-04:00", "artifact": "odisena_v9_regeneration_bundle_halt_and_route_marker_2026-07-09_0349ET.md", "role": "transition guardrail"},
+    "predecessor_bridge": {
+      "artifact": "odisena_layer1_routing_successor_reconciliation_draft_enhanced_2026-07-09_1533ET.md",
+      "class": "NON-LIVE / advisory / historical bridge",
+      "reclassifies": "odisena_layer1_routing_successor_reconciliation_draft_2026-07-09_0320ET.md as v8-to-v9 transition bridge (NOT a v8·v5 candidate)"
+    },
+    "held_candidate_register_state": {"E.1": "CONSUMED by v9-am-003 at 04:04 ET"},
+    "safety_boundary": "IDs, timestamps, and disposition tags only. NO Layer-1 body content, NO cluster-map internals, NO routing spine internals."
+  },
+  "v9_amendments": {
+    "parent_layer1": "odisena_like_thread_merge_index_v9_2026-07-09_0336ET.md (v9-A)",
+    "chain_started_at": "2026-07-09T03:50:00-04:00",
+    "sibling_ordinals": [
+      {"id": "v9-am-001", "at": "2026-07-09T03:50:00-04:00", "topic": "Cluster 19 beat-3 window OPEN", "status": "LIVE"},
+      {"id": "v9-am-002", "at": "2026-07-09T03:58:00-04:00", "topic": "Cluster 19 beat-3 window CLOSE", "status": "LIVE"},
+      {"id": "v9-am-003", "at": "2026-07-09T04:04:00-04:00", "topic": "E.1 Tier-2 counter reset semantics codification (consumes E.1 from held-candidate register)", "status": "LIVE"}
+    ],
+    "route_to_canonical_markers": [
+      {"at": "2026-07-09T03:59:00-04:00", "topic": "E.1 election γ' route-to-canonical (non-authoring marker)", "artifact": "odisena_e1_election_gamma_prime_route_to_canonical_2026-07-09_0359ET.md"}
+    ],
+    "next_free_ordinal": "v9-am-004 (unallocated)",
+    "emission_gate": "F.9 pre-scan required + explicit operator directive before any v9-am ordinal claim",
+    "safety_boundary": "IDs and one-line topics only. NO amendment bodies, NO Reading internals, NO ratchet-doctrine internals."
   }
 }

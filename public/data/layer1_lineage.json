@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.0",
+  "artifact_family": "odisena-console-mirror",
+  "generated_at": "2026-07-09T15:37:00-04:00",
+  "generator": "PR #10 v9 canonicalization",
+  "purpose": "Track Layer-1 spine lineage and v-class transitions as metadata only. No routing-spine bodies, no cluster-map internals.",
+  "current_canonical": {
+    "designation": "v9-A",
+    "artifact": "odisena_like_thread_merge_index_v9_2026-07-09_0336ET.md",
+    "size_bytes": 60717,
+    "ratified_at": "2026-07-09T03:36:00-04:00",
+    "ratification_mechanism": "§4c operator override · citation-graph-authoritative · §4.5 earliest-timestamp rule",
+    "authoring_session": "817c9127",
+    "election_form": "a"
+  },
+  "historical_peers": [
+    {
+      "designation": "v9-B",
+      "class": "v9-eqv historical peer",
+      "artifact": "odisena_like_thread_merge_index_v9.md",
+      "disposition": "preserved as non-canonical v9-lineage peer per 2026-07-09 03:55 ET collision resolution",
+      "not_deleted": true
+    },
+    {
+      "designation": "v8·v4",
+      "class": "historical peer",
+      "artifact": "odisena_like_thread_merge_index_v8_v4_2026-07-08_2244ET.md",
+      "disposition": "preserved as pre-v9 routing spine; v8 amendment chain closed at v8-am-043",
+      "not_deleted": true
+    }
+  ],
+  "transition_record": {
+    "event": "v8 → v9 v-class transition",
+    "collision_routing_marker": {
+      "at": "2026-07-09T03:54:00-04:00",
+      "artifact": "odisena_v9_collision_routing_marker_2026-07-09_0354ET.md",
+      "role": "flagged v9-A vs v9-B collision"
+    },
+    "collision_resolution": {
+      "at": "2026-07-09T03:55:00-04:00",
+      "artifact": "odisena_v9_collision_resolution_concurrence_acknowledgment_2026-07-09_0355ET.md",
+      "winner": "v9-A",
+      "loser_disposition": "v9-B → v9-eqv historical peer",
+      "mechanism": "concurrence acknowledgment"
+    },
+    "regeneration_halt": {
+      "at": "2026-07-09T03:49:00-04:00",
+      "artifact": "odisena_v9_regeneration_bundle_halt_and_route_marker_2026-07-09_0349ET.md",
+      "role": "transition guardrail — halted v9 regeneration bundle; routed to canonical thread"
+    }
+  },
+  "v_class_history": [
+    {"class": "v7", "state": "predecessor", "note": "console mirror rendering layer"},
+    {"class": "v8", "state": "historical peer", "amendment_ceiling": "v8-am-043", "chain_status": "CLOSED"},
+    {"class": "v9-B", "state": "historical peer (eqv)", "note": "resolved against in 2026-07-09 03:55 ET concurrence"},
+    {"class": "v9-A", "state": "CANONICAL LIVE", "amendment_ceiling": "v9-am-003", "next_free": "v9-am-004"}
+  ],
+  "advisory_bridges": [
+    {
+      "artifact": "odisena_layer1_routing_successor_reconciliation_draft_2026-07-09_0320ET.md",
+      "class": "NON-LIVE",
+      "original_intent": "v8·v5 successor candidate reconciliation",
+      "reclassified_as": "v8-to-v9 transition bridge (historical only)"
+    },
+    {
+      "artifact": "odisena_layer1_routing_successor_reconciliation_draft_enhanced_2026-07-09_1533ET.md",
+      "class": "NON-LIVE · advisory · historical bridge",
+      "size_bytes": 14543,
+      "role": "authoritative summary of v8-to-v9 transition; reclassified 03:20 draft; documented v8-am-042/043 closure and v9-am-001/002/003 emergence"
+    }
+  ],
+  "future_emission_rules": {
+    "future_headers_must_cite": "v9-A canonical Layer-1 (odisena_like_thread_merge_index_v9_2026-07-09_0336ET.md)",
+    "future_amendment_gate": "F.9 pre-scan required + explicit operator directive before any v9-am ordinal claim",
+    "historical_peer_preservation": "v9-B and v8 lineage must not be deleted, mutated, or overwritten"
+  },
+  "safety_boundary": "IDs, timestamps, dispositions, and role tags only. NO Layer-1 body content. NO routing spine internals. NO cluster-map internals. NO amendment bodies. NO Reading/glyph doctrine internals."
+}
