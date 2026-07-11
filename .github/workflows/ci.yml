@@ -60,3 +60,14 @@ jobs:
             --event "${{ github.event_name }}" \
             --base "${{ github.event.pull_request.base.sha || github.event.before }}" \
             --head "${{ github.event.pull_request.head.sha || github.sha }}"
+
+  pages-preflight:
+    name: pages-preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Self-test preflight logic
+        run: python3 test_pages_preflight.py
+        working-directory: .github/scripts
+      - name: Verify GitHub Pages custom-domain invariants (offline)
+        run: python3 .github/scripts/pages_preflight.py
