@@ -359,7 +359,7 @@
     try {
       const res = await fetch(r.path);
       const md = await res.text();
-      body.innerHTML = window.marked.parse(md);
+      body.innerHTML = sanitizeHtml(window.marked.parse(md));
     } catch (e) {
       body.innerHTML = '<div class="empty"><div class="empty-emoji">⚠️</div>Failed to load</div>';
     }
@@ -758,6 +758,66 @@
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // Defense-in-depth allowlist sanitizer for the HTML that marked.parse() emits.
+  // Runbook markdown is first-party/trusted, but rendered HTML is never assigned
+  // to innerHTML raw: we reparse it in an inert document and drop any tag,
+  // attribute, or URL scheme outside the allowlist below. Pure DOM, no network.
+  const SANITIZE_TAGS = new Set([
+    'a', 'p', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'em', 'strong', 'b', 'i',
+    's', 'del', 'ins', 'sup', 'sub', 'span', 'div', 'img', 'kbd', 'samp',
+    'var', 'mark', 'abbr', 'figure', 'figcaption', 'caption', 'dl', 'dt', 'dd',
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'col', 'colgroup',
+  ]);
+  const SANITIZE_GLOBAL_ATTR = new Set(['class', 'id', 'title', 'lang', 'dir', 'align']);
+  const SANITIZE_TAG_ATTR = {
+    a: new Set(['href']),
+    img: new Set(['src', 'alt', 'width', 'height']),
+    td: new Set(['colspan', 'rowspan', 'scope']),
+    th: new Set(['colspan', 'rowspan', 'scope']),
+    col: new Set(['span']),
+    colgroup: new Set(['span']),
+    ol: new Set(['start', 'type']),
+  };
+  const SANITIZE_URL_ATTR = { a: 'href', img: 'src' };
+  const SAFE_SCHEMES = new Set(['http', 'https', 'mailto', 'tel']);
+
+  function isSafeUrl(value) {
+    // Strip ASCII whitespace/control chars browsers ignore when parsing a
+    // scheme (defeats "java\tscript:" and entity-decoded tricks).
+    const cleaned = String(value == null ? '' : value).replace(/[\u0000-\u0020\u007f]/g, '');
+    const scheme = cleaned.match(/^([a-z][a-z0-9+.-]*):/i);
+    if (!scheme) return true; // relative path, anchor, query, or protocol-relative
+    return SAFE_SCHEMES.has(scheme[1].toLowerCase());
+  }
+
+  function sanitizeHtml(dirty) {
+    const doc = new DOMParser().parseFromString(String(dirty), 'text/html');
+    const walk = node => {
+      Array.from(node.children).forEach(el => {
+        const tag = el.tagName.toLowerCase();
+        if (!SANITIZE_TAGS.has(tag)) {
+          el.remove(); // drops the element and its contents (script/style/iframe/…)
+          return;
+        }
+        Array.from(el.attributes).forEach(attr => {
+          const name = attr.name.toLowerCase();
+          const allowed = !name.startsWith('on') &&
+            (SANITIZE_GLOBAL_ATTR.has(name) ||
+              (SANITIZE_TAG_ATTR[tag] && SANITIZE_TAG_ATTR[tag].has(name)));
+          if (!allowed) el.removeAttribute(attr.name);
+        });
+        const urlAttr = SANITIZE_URL_ATTR[tag];
+        if (urlAttr && el.hasAttribute(urlAttr) && !isSafeUrl(el.getAttribute(urlAttr))) {
+          el.removeAttribute(urlAttr);
+        }
+        walk(el);
+      });
+    };
+    walk(doc.body);
+    return doc.body.innerHTML;
   }
 
   // Search handlers
