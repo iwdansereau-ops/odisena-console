@@ -73,3 +73,15 @@ portability to other static hosts.
 Add/replace files under `runbooks/` or `artifacts/`, update the matching entry
 in `catalog.json` (relative `path`), bump the `CACHE` constant in `sw.js`, and
 re-deploy.
+
+## Author
+
+Created by **Ian Dansereau** (Ian Winfield Dansereau) — Governance Lead, Value
+Creation Office at Brightspeed, working in telecom & financial oversight and
+data governance. Background spans telecommunications engineering, financial
+consulting and dispute advisory, wireless and structured cabling design, quality
+control, field testing & commissioning, manufacturing, mechanics, and
+prototyping. Mechanical engineering, Georgia Institute of Technology. Based in
+Bethesda, Maryland.
+
+- LinkedIn: <https://www.linkedin.com/in/ianwdansereau>
