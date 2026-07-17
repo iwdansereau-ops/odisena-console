@@ -1,5 +1,5 @@
 // Odisena Console — service worker for offline
-const CACHE = 'odisena-v4';
+const CACHE = 'odisena-v6';
 const ASSETS = [
   './',
   './index.html',
