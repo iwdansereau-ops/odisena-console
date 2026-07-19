@@ -216,6 +216,19 @@
 
   document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', goBack));
 
+  // In-page scroll shortcuts (e.g. Trust & provenance). Uses smooth scroll
+  // unless the user prefers reduced motion; no hash change, so routing is safe.
+  document.querySelectorAll('[data-scroll]').forEach(el => {
+    el.addEventListener('click', () => {
+      if (state.view !== 'home') show('home');
+      const target = document.getElementById(el.dataset.scroll);
+      if (!target) return;
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      target.focus({ preventScroll: true });
+    });
+  });
+
   // ===== Data =====
   async function loadCatalog() {
     const res = await fetch('catalog.json');

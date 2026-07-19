@@ -16,6 +16,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Odisena" />
 <meta name="mobile-web-app-capable" content="yes" />
+<meta name="author" content="Odisena LLC" />
 <meta name="description" content="Odisena Console — read-only engineering command center and system-navigation surface for OTel, RDS migration, and IAM work, with a connected map of domains, repositories, deployment surfaces, publication systems, and execution gates." />
 <link rel="canonical" href="https://console.odisena.com/" />
 
@@ -60,6 +61,7 @@
           <div>
             <div class="brand-name">Odisena Console</div>
             <div class="brand-sub">Engineering command center</div>
+            <div class="brand-owner">An Odisena product</div>
           </div>
         </div>
         <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark theme" aria-pressed="false" title="Toggle light / dark theme">
@@ -138,6 +140,10 @@
             <span class="about-link-title">chronicle.odisena.com</span>
             <span class="about-link-sub">Chronicle · live ↗</span>
           </a>
+          <button class="about-link" type="button" data-scroll="provenance">
+            <span class="about-link-title">Trust &amp; provenance</span>
+            <span class="about-link-sub">How this data is sourced &amp; handled</span>
+          </button>
         </div>
         <div class="about-note" role="note">
           <strong>Odisena.World / Helios</strong> is preview-built (WebXR MVP preview-deployed). Its production domain and physical-device validation gates are still pending, so it is intentionally not linked as a live surface here. See the <button class="inline-link" data-nav="system" type="button">System map</button> for its recorded state.
@@ -147,16 +153,26 @@
     </div>
 
     <div class="section">
-      <div class="disclaimer" role="note">
-        <div class="disclaimer-title">About this console &amp; its data</div>
+      <div class="disclaimer" role="note" id="provenance" tabindex="-1">
+        <div class="disclaimer-title">Trust &amp; provenance</div>
         <ul>
           <li>Static, installable web app. It stores no cookies and uses no <code>localStorage</code>, <code>sessionStorage</code>, or analytics — all state is in-memory.</li>
           <li>It makes no external network calls; everything shown is served from this site.</li>
           <li>Reports and datasets marked <span class="badge badge-sample">Sample</span> are synthetic demonstrations. They are illustrative and are not real incidents, findings, or production data.</li>
+          <li>System-map, deployment, and execution-gate states are hand-recorded from the Odisena master registry as of the <strong>2026-07-13 cutoff</strong> — they are illustrative and are never polled, reconciled, or actioned from this console.</li>
           <li>Content is shared as an engineering portfolio and is provided as-is, without warranties or guarantees.</li>
         </ul>
       </div>
     </div>
+
+    <footer class="site-footer">
+      <div class="site-footer-brand">Odisena Console · An Odisena product</div>
+      <nav class="site-footer-links" aria-label="Odisena">
+        <a href="https://odisena.com" target="_blank" rel="noopener noreferrer">Odisena home ↗</a>
+        <button class="footer-link" type="button" data-scroll="provenance">Trust &amp; provenance</button>
+      </nav>
+      <div class="site-footer-legal">© 2026 Odisena LLC · Maryland</div>
+    </footer>
   </section>
 
   <!-- Runbooks list + reader -->
