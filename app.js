@@ -216,11 +216,11 @@
 
   document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', goBack));
 
-  // In-page scroll shortcuts (e.g. Trust & provenance). Uses smooth scroll
+  // In-page scroll shortcuts (e.g. Trust & provenance). All [data-scroll]
+  // triggers live on the home view alongside their targets. Uses smooth scroll
   // unless the user prefers reduced motion; no hash change, so routing is safe.
   document.querySelectorAll('[data-scroll]').forEach(el => {
     el.addEventListener('click', () => {
-      if (state.view !== 'home') show('home');
       const target = document.getElementById(el.dataset.scroll);
       if (!target) return;
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
