@@ -32,7 +32,8 @@ a sub-path, or a static object store.
 ├── manifest.webmanifest    # PWA manifest
 ├── sw.js                   # Service worker (offline cache, same-origin only)
 ├── 404.html                # Static not-found fallback
-├── robots.txt              # Crawler policy
+├── robots.txt              # Crawler policy (points to sitemap.xml)
+├── sitemap.xml             # Single-URL sitemap for the canonical origin
 ├── CNAME                   # Pages custom-domain binding (console.odisena.com)
 ├── .nojekyll               # Disables Jekyll so files are served verbatim (Pages)
 ├── icons/                  # PWA + favicon assets
