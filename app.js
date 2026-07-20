@@ -7,6 +7,7 @@
     view: 'home',
     history: ['home'],
     filters: { runbooks: 'all', artifacts: 'all' },
+    system: { kind: 'all', query: '', mode: 'map', selected: null },
     theme: null,
   };
 
@@ -26,6 +27,67 @@
       return tok;
     }).join('');
   }
+
+  // ===== System model (static navigation surface) =====
+  // Hand-authored from the Odisena master registry (2026-07-13 cutoff). This is
+  // a recorded navigation model, NOT a live health/telemetry feed. States are
+  // deliberately precise and are never reconciled automatically.
+  const SYSTEM_STATES = {
+    live:     { label: 'Live',         color: '#10b981', desc: 'Confirmed live / deployed and protected.' },
+    preview:  { label: 'Preview',      color: '#3b82f6', desc: 'Built and preview-deployed; production domain / device gates pending.' },
+    held:     { label: 'Held',         color: '#f59e0b', desc: 'Code green or ready, but promotion / rollout is intentionally held.' },
+    blocked:  { label: 'Blocked',      color: '#dc2626', desc: 'Blocked on an authority-recovery or upstream dependency.' },
+    proposed: { label: 'Proposed',     color: '#6b7280', desc: 'Proposed / readiness concept; not started.' },
+    advisory: { label: 'Advisory',     color: '#8b5cf6', desc: 'Advisory-recorded from a non-live source; not directly confirmed.' },
+    notexec:  { label: 'Not executed', color: '#a3a19c', desc: 'Defined but not yet executed.' },
+    active:   { label: 'Active',       color: '#0891b2', desc: 'Active engineering corpus / repository.' },
+  };
+
+  const SYSTEM_KINDS = {
+    engineering: 'Engineering domains',
+    repo:        'Repositories',
+    product:     'Products',
+    surface:     'Deployment surfaces',
+  };
+  const SYSTEM_KIND_ORDER = ['engineering', 'repo', 'product', 'surface'];
+
+  // Public system map. Scoped to the public engineering portfolio only.
+  // Internal product roadmap, private registries/links, DNS/authority-recovery
+  // detail, unregistered-domain plans and legal/IP governance are intentionally
+  // NOT modeled here — they are not appropriate for a public surface.
+  const SYSTEM = {
+    nodes: [
+      // Engineering domains
+      { id: 'eng-otel', label: 'OpenTelemetry Collector', kind: 'engineering', state: 'active', sub: 'Performance, drift & benchmark governance', detail: 'OTel Collector performance work: sharded state cache, OTTL auditor, benchmark aggregation and CI noise-floor analysis. Source corpus only — no production-deployment claim.' },
+      { id: 'eng-rds', label: 'PostgreSQL RDS Migration', kind: 'engineering', state: 'active', sub: 'Zero-downtime DDL & 2TB backfill', detail: 'RDS Postgres migration runbooks and preflight tooling: hygiene checks, config verification, dashboard writers and structured run logging.' },
+      { id: 'eng-iam', label: 'IAM & AWS Security', kind: 'engineering', state: 'active', sub: 'OIDC, DDB auditor & federated roles', detail: 'IAM security tooling: DynamoDB IAM refactor, resource auditor, GitHub OIDC↔AWS federation and federated-role audits. Illustrative; not a live audit of any account.' },
+
+      // Products
+      { id: 'prod-console', label: 'Odisena Console', kind: 'product', state: 'live', sub: 'This app', url: 'https://console.odisena.com', detail: 'Read-only engineering command center and system-navigation surface (this PWA). Published on GitHub Pages at console.odisena.com.' },
+
+      // Deployment surfaces (public, live domains only)
+      { id: 'srf-apex', label: 'odisena.com', kind: 'surface', state: 'live', sub: 'Apex · live', url: 'https://odisena.com', detail: 'Apex production domain. Live and publicly served. DNS is managed outside this repository.' },
+      { id: 'srf-console', label: 'console.odisena.com', kind: 'surface', state: 'live', sub: 'This console · GitHub Pages', url: 'https://console.odisena.com', detail: 'Custom-domain binding for this console, served from GitHub Pages via the committed CNAME. DNS is managed outside this repository.' },
+      { id: 'srf-chronicle', label: 'chronicle.odisena.com', kind: 'surface', state: 'live', sub: 'Identity & Chronicle · live', url: 'https://chronicle.odisena.com', detail: 'Identity and Chronicle surface. Publicly served. DNS is managed outside this repository.' },
+
+      // Repositories (public source of this console)
+      { id: 'repo-console', label: 'odisena-console', kind: 'repo', state: 'active', sub: 'This console', url: 'https://github.com/iwdansereau-ops/odisena-console', detail: 'Public source repository for this console.' },
+    ],
+    links: [
+      ['eng-otel', 'prod-console'], ['eng-rds', 'prod-console'], ['eng-iam', 'prod-console'],
+      ['repo-console', 'srf-console'], ['prod-console', 'srf-console'],
+    ],
+  };
+  const SYSTEM_BY_ID = Object.fromEntries(SYSTEM.nodes.map(n => [n.id, n]));
+  const SYSTEM_ADJ = (() => {
+    const adj = {};
+    SYSTEM.nodes.forEach(n => { adj[n.id] = new Set(); });
+    SYSTEM.links.forEach(([a, b]) => { if (adj[a] && adj[b]) { adj[a].add(b); adj[b].add(a); } });
+    return adj;
+  })();
+
+  // Home status summary + Ops rows draw from these curated id sets.
+  const HOME_STATUS_IDS = ['srf-apex', 'srf-console', 'srf-chronicle'];
 
   // ===== Synthetic / sensitive classification =====
   function isSynthetic(item) {
@@ -74,6 +136,7 @@
     if (pushHistory && state.history[state.history.length - 1] !== view) state.history.push(view);
     window.scrollTo(0, 0);
     if (location.hash !== '#/' + view) history.replaceState(null, '', '#/' + view);
+    if (view === 'system' && state.system.mode === 'map') requestAnimationFrame(drawSystemEdges);
   }
 
   function goBack() {
@@ -245,7 +308,7 @@
     try {
       const res = await fetch(r.path);
       const md = await res.text();
-      body.innerHTML = window.marked.parse(md);
+      body.innerHTML = sanitizeHtml(window.marked.parse(md));
     } catch (e) {
       body.innerHTML = '<div class="empty"><div class="empty-emoji">⚠️</div>Failed to load</div>';
     }
@@ -381,19 +444,349 @@
     tags.innerHTML = unique.map(w => `<span class="ops-tag">${escapeHtml(formatLabel(w))}</span>`).join('');
   }
 
+  // ===== System map rendering =====
+  function stateMeta(key) { return SYSTEM_STATES[key] || SYSTEM_STATES.proposed; }
+  function stateBadge(key) {
+    const s = stateMeta(key);
+    return `<span class="state-badge" data-state="${key}"><span class="state-dot" style="background:${s.color}"></span>${escapeHtml(s.label)}</span>`;
+  }
+
+  function filteredSystemNodes() {
+    const { kind, query } = state.system;
+    const q = query.trim().toLowerCase();
+    return SYSTEM.nodes.filter(n => {
+      if (kind !== 'all' && n.kind !== kind) return false;
+      if (q && !(n.label.toLowerCase().includes(q) || (n.sub || '').toLowerCase().includes(q) || (n.detail || '').toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }
+
+  function renderSystemLegend() {
+    const ul = document.getElementById('system-legend-list');
+    if (!ul) return;
+    ul.innerHTML = Object.entries(SYSTEM_STATES).map(([k, s]) =>
+      `<li><span class="state-dot" style="background:${s.color}"></span><strong>${escapeHtml(s.label)}</strong> — ${escapeHtml(s.desc)}</li>`
+    ).join('');
+  }
+
+  function renderSystemChips() {
+    const row = document.getElementById('system-chips');
+    if (!row) return;
+    row.innerHTML = '';
+    const items = [['all', 'All']].concat(SYSTEM_KIND_ORDER.map(k => [k, SYSTEM_KINDS[k]]));
+    items.forEach(([key, label]) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip' + (state.system.kind === key ? ' chip-active' : '');
+      chip.textContent = label;
+      chip.setAttribute('aria-pressed', state.system.kind === key ? 'true' : 'false');
+      chip.addEventListener('click', () => {
+        state.system.kind = key;
+        renderSystemChips();
+        renderSystemGraph();
+      });
+      row.appendChild(chip);
+    });
+  }
+
+  // Renders whichever mode is active (map or list) plus keeps the other in sync.
+  function renderSystemGraph() {
+    renderSystemMap();
+    renderSystemList();
+  }
+
+  function renderSystemMap() {
+    const map = document.getElementById('system-map');
+    if (!map) return;
+    const nodes = filteredSystemNodes();
+    map.innerHTML = '';
+    if (!nodes.length) {
+      map.innerHTML = '<div class="empty"><div class="empty-emoji">📭</div>No nodes match</div>';
+      return;
+    }
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'sys-edges');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    map.appendChild(svg);
+
+    const cols = document.createElement('div');
+    cols.className = 'sys-cols';
+    const present = SYSTEM_KIND_ORDER.filter(k => nodes.some(n => n.kind === k));
+    present.forEach(kind => {
+      const col = document.createElement('div');
+      col.className = 'sys-col';
+      const h = document.createElement('div');
+      h.className = 'sys-col-title';
+      h.textContent = SYSTEM_KINDS[kind];
+      col.appendChild(h);
+      nodes.filter(n => n.kind === kind).forEach(n => col.appendChild(makeNodeButton(n, 'sys-node')));
+      cols.appendChild(col);
+    });
+    map.appendChild(cols);
+    requestAnimationFrame(drawSystemEdges);
+  }
+
+  function makeNodeButton(n, cls) {
+    const s = stateMeta(n.state);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = cls + (state.system.selected === n.id ? ' is-selected' : '');
+    btn.dataset.nodeId = n.id;
+    btn.setAttribute('aria-label', `${n.label}. ${SYSTEM_KINDS[n.kind]}. State: ${s.label}.`);
+    btn.innerHTML =
+      `<span class="sys-node-dot" style="background:${s.color}"></span>` +
+      `<span class="sys-node-body"><span class="sys-node-label">${escapeHtml(n.label)}</span>` +
+      `<span class="sys-node-state">${escapeHtml(s.label)}</span></span>`;
+    btn.addEventListener('click', () => selectSystemNode(n.id));
+    return btn;
+  }
+
+  function drawSystemEdges() {
+    const map = document.getElementById('system-map');
+    const svg = map && map.querySelector('.sys-edges');
+    if (!svg) return;
+    const mapRect = map.getBoundingClientRect();
+    if (!mapRect.width) return;
+    svg.setAttribute('width', map.scrollWidth);
+    svg.setAttribute('height', map.scrollHeight);
+    svg.setAttribute('viewBox', `0 0 ${map.scrollWidth} ${map.scrollHeight}`);
+    const centre = id => {
+      const el = map.querySelector(`[data-node-id="${CSS.escape(id)}"]`);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return {
+        x: r.left - mapRect.left + r.width / 2,
+        y: r.top - mapRect.top + r.height / 2,
+        w: r.width,
+      };
+    };
+    const sel = state.system.selected;
+    let paths = '';
+    SYSTEM.links.forEach(([a, b]) => {
+      const p1 = centre(a), p2 = centre(b);
+      if (!p1 || !p2) return;
+      const active = sel && (a === sel || b === sel);
+      const x1 = p1.x, x2 = p2.x;
+      const dx = Math.max(24, Math.abs(x2 - x1) / 2);
+      const d = `M ${x1} ${p1.y} C ${x1 + dx} ${p1.y}, ${x2 - dx} ${p2.y}, ${x2} ${p2.y}`;
+      paths += `<path d="${d}" class="sys-edge${active ? ' sys-edge-active' : ''}" fill="none" />`;
+    });
+    svg.innerHTML = paths;
+  }
+
+  function renderSystemList() {
+    const list = document.getElementById('system-list');
+    if (!list) return;
+    const nodes = filteredSystemNodes();
+    list.innerHTML = '';
+    if (!nodes.length) {
+      list.innerHTML = '<div class="empty"><div class="empty-emoji">📭</div>No nodes match</div>';
+      return;
+    }
+    const present = SYSTEM_KIND_ORDER.filter(k => nodes.some(n => n.kind === k));
+    present.forEach(kind => {
+      const group = document.createElement('div');
+      group.className = 'sys-group';
+      const h = document.createElement('h2');
+      h.className = 'sys-group-title';
+      h.textContent = SYSTEM_KINDS[kind];
+      group.appendChild(h);
+      nodes.filter(n => n.kind === kind).forEach(n => {
+        const item = document.createElement('div');
+        item.className = 'sys-row';
+        const rels = [...SYSTEM_ADJ[n.id]].map(id => {
+          const t = SYSTEM_BY_ID[id];
+          return `<button type="button" class="sys-rel" data-sysnode="${id}">${escapeHtml(t.label)}</button>`;
+        }).join('');
+        const link = n.url ? `<a class="sys-row-link" href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer">Open ↗</a>` : '';
+        item.innerHTML =
+          `<div class="sys-row-head"><span class="sys-row-name">${escapeHtml(n.label)}</span>${stateBadge(n.state)}</div>` +
+          (n.sub ? `<div class="sys-row-sub">${escapeHtml(n.sub)}</div>` : '') +
+          `<div class="sys-row-detail">${escapeHtml(n.detail || '')}</div>` +
+          (rels ? `<div class="sys-row-rels"><span class="sys-row-rels-label">Connects to</span>${rels}</div>` : '') +
+          link;
+        group.appendChild(item);
+      });
+      list.appendChild(group);
+    });
+    list.querySelectorAll('[data-sysnode]').forEach(b =>
+      b.addEventListener('click', () => selectSystemNode(b.dataset.sysnode)));
+  }
+
+  function selectSystemNode(id) {
+    const n = SYSTEM_BY_ID[id];
+    const panel = document.getElementById('system-detail');
+    if (!n || !panel) return;
+    state.system.selected = id;
+    const s = stateMeta(n.state);
+    const rels = [...SYSTEM_ADJ[id]].map(rid => {
+      const t = SYSTEM_BY_ID[rid];
+      return `<button type="button" class="sys-rel" data-sysnode="${rid}">${escapeHtml(t.label)}</button>`;
+    }).join('');
+    panel.hidden = false;
+    panel.innerHTML =
+      `<div class="sys-detail-head"><span class="sys-detail-kind">${escapeHtml(SYSTEM_KINDS[n.kind])}</span>` +
+      `<button class="sys-detail-close" type="button" aria-label="Clear selection">×</button></div>` +
+      `<div class="sys-detail-title">${escapeHtml(n.label)}</div>` +
+      `<div class="sys-detail-state">${stateBadge(n.state)}<span class="sys-detail-state-desc">${escapeHtml(s.desc)}</span></div>` +
+      `<p class="sys-detail-body">${escapeHtml(n.detail || '')}</p>` +
+      (n.url ? `<a class="sys-detail-link" href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(n.url.replace(/^https?:\/\//, ''))} ↗</a>` : '') +
+      (rels ? `<div class="sys-row-rels"><span class="sys-row-rels-label">Connects to</span>${rels}</div>` : '');
+    panel.querySelector('.sys-detail-close').addEventListener('click', () => {
+      state.system.selected = null;
+      panel.hidden = true;
+      renderSystemMap();
+      renderSystemList();
+    });
+    panel.querySelectorAll('[data-sysnode]').forEach(b =>
+      b.addEventListener('click', () => selectSystemNode(b.dataset.sysnode)));
+    // Re-render so selection highlight + edge emphasis update.
+    renderSystemMap();
+    renderSystemList();
+    panel.focus();
+    panel.scrollIntoView({ block: 'nearest' });
+  }
+
+  function openSystemNode(id) {
+    show('system');
+    setSystemMode('list');
+    selectSystemNode(id);
+  }
+
+  function setSystemMode(mode) {
+    state.system.mode = mode;
+    const map = document.getElementById('system-map-wrap');
+    const list = document.getElementById('system-list');
+    const bMap = document.getElementById('sys-mode-map');
+    const bList = document.getElementById('sys-mode-list');
+    const isMap = mode === 'map';
+    if (map) map.hidden = !isMap;
+    if (list) list.hidden = isMap;
+    if (bMap) { bMap.classList.toggle('seg-active', isMap); bMap.setAttribute('aria-pressed', String(isMap)); }
+    if (bList) { bList.classList.toggle('seg-active', !isMap); bList.setAttribute('aria-pressed', String(!isMap)); }
+    if (isMap) requestAnimationFrame(drawSystemEdges);
+  }
+
+  function renderSystem() {
+    renderSystemLegend();
+    renderSystemChips();
+    renderSystemGraph();
+    setSystemMode(state.system.mode);
+  }
+
+  function statusRow(n, interactive) {
+    const s = stateMeta(n.state);
+    const tag = interactive ? 'button' : 'div';
+    const attr = interactive ? ` type="button" data-sysnode="${n.id}"` : '';
+    return `<${tag} class="status-row"${attr}>` +
+      `<span class="state-dot" style="background:${s.color}"></span>` +
+      `<span class="status-row-body"><span class="status-row-name">${escapeHtml(n.label)}</span>` +
+      `<span class="status-row-sub">${escapeHtml(n.sub || '')}</span></span>` +
+      `<span class="status-row-state">${escapeHtml(s.label)}</span></${tag}>`;
+  }
+
+  function renderHomeSystem() {
+    const grid = document.getElementById('home-system');
+    if (!grid) return;
+    grid.innerHTML = HOME_STATUS_IDS.map(id => SYSTEM_BY_ID[id]).filter(Boolean)
+      .map(n => statusRow(n, true)).join('');
+    grid.querySelectorAll('[data-sysnode]').forEach(b =>
+      b.addEventListener('click', () => openSystemNode(b.dataset.sysnode)));
+  }
+
+  function renderOpsStatus() {
+    const map = { 'ops-surfaces': 'surface' };
+    Object.entries(map).forEach(([elId, kind]) => {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.className = 'status-grid';
+      el.innerHTML = SYSTEM.nodes.filter(n => n.kind === kind).map(n => statusRow(n, false)).join('');
+    });
+  }
+
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // Defense-in-depth allowlist sanitizer for the HTML that marked.parse() emits.
+  // Runbook markdown is first-party/trusted, but rendered HTML is never assigned
+  // to innerHTML raw: we reparse it in an inert document and drop any tag,
+  // attribute, or URL scheme outside the allowlist below. Pure DOM, no network.
+  const SANITIZE_TAGS = new Set([
+    'a', 'p', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'em', 'strong', 'b', 'i',
+    's', 'del', 'ins', 'sup', 'sub', 'span', 'div', 'img', 'kbd', 'samp',
+    'var', 'mark', 'abbr', 'figure', 'figcaption', 'caption', 'dl', 'dt', 'dd',
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'col', 'colgroup',
+  ]);
+  const SANITIZE_GLOBAL_ATTR = new Set(['class', 'id', 'title', 'lang', 'dir', 'align']);
+  const SANITIZE_TAG_ATTR = {
+    a: new Set(['href']),
+    img: new Set(['src', 'alt', 'width', 'height']),
+    td: new Set(['colspan', 'rowspan', 'scope']),
+    th: new Set(['colspan', 'rowspan', 'scope']),
+    col: new Set(['span']),
+    colgroup: new Set(['span']),
+    ol: new Set(['start', 'type']),
+  };
+  const SANITIZE_URL_ATTR = { a: 'href', img: 'src' };
+  const SAFE_SCHEMES = new Set(['http', 'https', 'mailto', 'tel']);
+
+  function isSafeUrl(value) {
+    // Strip ASCII whitespace/control chars browsers ignore when parsing a
+    // scheme (defeats "java\tscript:" and entity-decoded tricks).
+    const cleaned = String(value == null ? '' : value).replace(/[\u0000-\u0020\u007f]/g, '');
+    const scheme = cleaned.match(/^([a-z][a-z0-9+.-]*):/i);
+    if (!scheme) return true; // relative path, anchor, query, or protocol-relative
+    return SAFE_SCHEMES.has(scheme[1].toLowerCase());
+  }
+
+  function sanitizeHtml(dirty) {
+    const doc = new DOMParser().parseFromString(String(dirty), 'text/html');
+    const walk = node => {
+      Array.from(node.children).forEach(el => {
+        const tag = el.tagName.toLowerCase();
+        if (!SANITIZE_TAGS.has(tag)) {
+          el.remove(); // drops the element and its contents (script/style/iframe/…)
+          return;
+        }
+        Array.from(el.attributes).forEach(attr => {
+          const name = attr.name.toLowerCase();
+          const allowed = !name.startsWith('on') &&
+            (SANITIZE_GLOBAL_ATTR.has(name) ||
+              (SANITIZE_TAG_ATTR[tag] && SANITIZE_TAG_ATTR[tag].has(name)));
+          if (!allowed) el.removeAttribute(attr.name);
+        });
+        const urlAttr = SANITIZE_URL_ATTR[tag];
+        if (urlAttr && el.hasAttribute(urlAttr) && !isSafeUrl(el.getAttribute(urlAttr))) {
+          el.removeAttribute(urlAttr);
+        }
+        walk(el);
+      });
+    };
+    walk(doc.body);
+    return doc.body.innerHTML;
   }
 
   // Search handlers
   document.getElementById('runbook-search').addEventListener('input', renderRunbooks);
   document.getElementById('artifact-search').addEventListener('input', renderArtifacts);
   document.getElementById('session-search').addEventListener('input', renderSessions);
+  document.getElementById('system-search').addEventListener('input', e => {
+    state.system.query = e.target.value || '';
+    renderSystemGraph();
+  });
+  document.getElementById('sys-mode-map').addEventListener('click', () => setSystemMode('map'));
+  document.getElementById('sys-mode-list').addEventListener('click', () => setSystemMode('list'));
+  window.addEventListener('resize', () => {
+    if (state.view === 'system' && state.system.mode === 'map') requestAnimationFrame(drawSystemEdges);
+  });
 
   // Hash routing (Safari back-swipe returns to home)
   window.addEventListener('hashchange', () => {
     const v = location.hash.replace('#/', '') || 'home';
-    if (['home', 'runbooks', 'artifacts', 'sessions', 'ops', 'reader', 'artifact-detail'].includes(v)) {
+    if (['home', 'runbooks', 'artifacts', 'sessions', 'ops', 'system', 'reader', 'artifact-detail'].includes(v)) {
       show(v, false);
     }
   });
@@ -411,9 +804,19 @@
     document.getElementById('install-close').addEventListener('click', () => banner.hidden = true);
   }
 
+  // Service worker registration (moved out of an inline <script> so the page's
+  // Content-Security-Policy can keep script-src 'self' without 'unsafe-inline').
+  // Same-origin, best-effort; the app works without it.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+
   // Init
   initTheme();
   initInstallBanner();
+  renderSystem();
+  renderHomeSystem();
+  renderOpsStatus();
   loadCatalog().catch(err => {
     console.error(err);
     document.body.innerHTML = '<div class="empty"><div class="empty-emoji">⚠️</div>Failed to load catalog</div>';

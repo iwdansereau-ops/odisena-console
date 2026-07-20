@@ -55,10 +55,10 @@ jobs:
         python3 .github/scripts/check_links.py &&
         ( cd .github/scripts && python3 test_sw_cache_bump.py )
 
-      # --- Preserve: safe, read-only Vercel/config state snapshot ------------
+      # --- Preserve: safe, read-only GitHub Pages/config state snapshot ------
       snapshot_adapter: custom
       snapshot_command: python3 .github/scripts/avpt_state_snapshot.py
 
-      # --- Inert deploy / rollback (static PWA: host git-integration deploys) -
-      deploy_command: "echo '[dry-run] static PWA — host git integration auto-deploys; no imperative deploy step'"
-      rollback_command: "echo '[dry-run] static PWA — rollback = re-promote previous host deploy (see DEPLOYMENT.md)'"
+      # --- Inert deploy / rollback (static PWA on GitHub Pages) --------------
+      deploy_command: "echo '[dry-run] static PWA — GitHub Pages publishes the main branch root on merge; no imperative deploy step'"
+      rollback_command: "echo '[dry-run] static PWA — rollback = git revert the bad commit and merge to main; no host deploy ledger to re-promote (see DEPLOYMENT.md)'"

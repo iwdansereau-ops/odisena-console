@@ -1461,7 +1461,7 @@
       "category": "otel",
       "name": "otel-drift-analysis.zip",
       "display_name": "Otel Drift Analysis",
-      "size": 427755,
+      "size": 424969,
       "ext": "zip",
       "type": "artifact",
       "path": "artifacts/64103b65__otel-drift-analysis.zip"
@@ -1648,7 +1648,7 @@
       "category": "otel",
       "name": "otelgc-weekly-health.zip",
       "display_name": "Otelgc Weekly Health",
-      "size": 13746,
+      "size": 13361,
       "ext": "zip",
       "type": "artifact",
       "path": "artifacts/f253fc9f__otelgc-weekly-health.zip"
@@ -1703,7 +1703,7 @@
       "category": "rds",
       "name": "pr_ci_migration_tests.zip",
       "display_name": "Pr Ci Migration Tests",
-      "size": 91741,
+      "size": 91513,
       "ext": "zip",
       "type": "artifact",
       "path": "artifacts/f17a94b5__pr_ci_migration_tests.zip"
