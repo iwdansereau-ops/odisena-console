@@ -47,86 +47,35 @@
     engineering: 'Engineering domains',
     repo:        'Repositories',
     product:     'Products',
-    surface:     'Deployment surfaces & DNS',
-    publication: 'Publication & record systems',
-    gate:        'Execution gates',
+    surface:     'Deployment surfaces',
   };
-  const SYSTEM_KIND_ORDER = ['engineering', 'repo', 'product', 'surface', 'publication', 'gate'];
+  const SYSTEM_KIND_ORDER = ['engineering', 'repo', 'product', 'surface'];
 
+  // Public system map. Scoped to the public engineering portfolio only.
+  // Internal product roadmap, private registries/links, DNS/authority-recovery
+  // detail, unregistered-domain plans and legal/IP governance are intentionally
+  // NOT modeled here — they are not appropriate for a public surface.
   const SYSTEM = {
     nodes: [
       // Engineering domains
       { id: 'eng-otel', label: 'OpenTelemetry Collector', kind: 'engineering', state: 'active', sub: 'Performance, drift & benchmark governance', detail: 'OTel Collector performance work: sharded state cache, OTTL auditor, benchmark aggregation and CI noise-floor analysis. Source corpus only — no production-deployment claim.' },
-      { id: 'eng-rds', label: 'PostgreSQL RDS Migration', kind: 'engineering', state: 'active', sub: 'Zero-downtime DDL & 2TB backfill', detail: 'RDS Postgres migration runbooks and preflight tooling: hygiene checks, config verification, dashboard writers and Notion logging.' },
+      { id: 'eng-rds', label: 'PostgreSQL RDS Migration', kind: 'engineering', state: 'active', sub: 'Zero-downtime DDL & 2TB backfill', detail: 'RDS Postgres migration runbooks and preflight tooling: hygiene checks, config verification, dashboard writers and structured run logging.' },
       { id: 'eng-iam', label: 'IAM & AWS Security', kind: 'engineering', state: 'active', sub: 'OIDC, DDB auditor & federated roles', detail: 'IAM security tooling: DynamoDB IAM refactor, resource auditor, GitHub OIDC↔AWS federation and federated-role audits. Illustrative; not a live audit of any account.' },
 
       // Products
       { id: 'prod-console', label: 'Odisena Console', kind: 'product', state: 'live', sub: 'This app', url: 'https://console.odisena.com', detail: 'Read-only engineering command center and system-navigation surface (this PWA). Published on GitHub Pages at console.odisena.com.' },
-      { id: 'prod-chronicle', label: 'Odisena Living Chronicle', kind: 'product', state: 'preview', sub: 'The Founding Loop · published-preview', detail: 'The Founding Loop / Odisena Living Chronicle web app. Status is published-preview: GATE-1 (Intake) passed; GATE-2/3/4 not started. Speculative chapters and the fictional-composite disclosure remain flagged.' },
-      { id: 'prod-helios', label: 'Helios MVP (WebXR)', kind: 'product', state: 'preview', sub: 'Preview-deployed; device gate pending', detail: 'Odisena.World / Helios WebXR MVP. Built and preview-deployed. Production domain binding and physical-headset (WebXR device) validation are both still pending gates.' },
 
-      // Deployment surfaces & DNS
-      { id: 'srf-apex', label: 'odisena.com', kind: 'surface', state: 'live', sub: 'Apex · confirmed live & protected', url: 'https://odisena.com', detail: 'Apex production domain. Confirmed live and protected; preserved and not touched during the www repair.' },
-      { id: 'srf-www', label: 'www.odisena.com', kind: 'surface', state: 'blocked', sub: 'Blocked · binding repair pending', detail: 'The www binding is blocked pending recovery of the owning Vercel scope and a TLS/binding repair.' },
+      // Deployment surfaces (public, live domains only)
+      { id: 'srf-apex', label: 'odisena.com', kind: 'surface', state: 'live', sub: 'Apex · live', url: 'https://odisena.com', detail: 'Apex production domain. Live and publicly served. DNS is managed outside this repository.' },
       { id: 'srf-console', label: 'console.odisena.com', kind: 'surface', state: 'live', sub: 'This console · GitHub Pages', url: 'https://console.odisena.com', detail: 'Custom-domain binding for this console, served from GitHub Pages via the committed CNAME. DNS is managed outside this repository.' },
-      { id: 'srf-chronicle', label: 'chronicle.odisena.com', kind: 'surface', state: 'live', sub: 'Identity & Chronicle · confirmed live', url: 'https://chronicle.odisena.com', detail: 'Identity and Chronicle surface. Confirmed live via a controlled rollout — monitored without conflating with Helios.' },
-      { id: 'srf-world', label: 'odisena.world', kind: 'surface', state: 'blocked', sub: 'Helios domain · approved but blocked', detail: 'Odisena.World / Helios domain. Approved but blocked; awaiting recovery of the owner-authorized project scope before cutover.' },
-      { id: 'srf-wc-pplx', label: 'winfield-chronicles.pplx.app', kind: 'surface', state: 'live', sub: 'Winfield Chronicles · published', url: 'https://winfield-chronicles.pplx.app', detail: 'Winfield Chronicles published surface (Perplexity permanent publication). Distinct from the unregistered WinfieldChronicles.com.' },
-      { id: 'srf-wc-vercel', label: 'winfield-chronicles.vercel.app', kind: 'surface', state: 'live', sub: 'Winfield Chronicles · Vercel alias', url: 'https://winfield-chronicles.vercel.app', detail: 'Winfield Chronicles Vercel production alias. Distinct from the unregistered WinfieldChronicles.com.' },
-      { id: 'srf-wc-com', label: 'WinfieldChronicles.com', kind: 'surface', state: 'proposed', sub: 'Readiness concept · not registered', detail: 'Readiness concept only. No DNS records found in any inspected source; requires preflight, zone inventory and explicit approval before any record is created.' },
+      { id: 'srf-chronicle', label: 'chronicle.odisena.com', kind: 'surface', state: 'live', sub: 'Identity & Chronicle · live', url: 'https://chronicle.odisena.com', detail: 'Identity and Chronicle surface. Publicly served. DNS is managed outside this repository.' },
 
-      // Repositories
-      { id: 'repo-console', label: 'odisena-console', kind: 'repo', state: 'active', sub: 'This console', url: 'https://github.com/iwdansereau-ops/odisena-console', detail: 'Source repository for this console. The v8→v9-A canonicalization event was mirrored here (PR #10) on a metadata-only basis.' },
-      { id: 'repo-chronicle', label: 'odisena-chronicle', kind: 'repo', state: 'active', sub: 'Chronicle app source', url: 'https://github.com/iwdansereau-ops/odisena-chronicle', detail: 'Source repository for the Odisena Chronicle.' },
-      { id: 'repo-timeline', label: 'odisena-timeline', kind: 'repo', state: 'active', sub: 'Timeline data / views', url: 'https://github.com/iwdansereau-ops/odisena-timeline', detail: 'Timeline repository supporting the Chronicle surface.' },
-      { id: 'repo-master', label: 'odisena-master', kind: 'repo', state: 'active', sub: 'Master corpus', url: 'https://github.com/iwdansereau-ops/odisena-master', detail: 'Master repository.' },
-      { id: 'repo-gateway', label: 'odisena-ai-gateway', kind: 'repo', state: 'active', sub: 'AI gateway', url: 'https://github.com/iwdansereau-ops/odisena-ai-gateway', detail: 'AI gateway repository.' },
-      { id: 'repo-gateway-contract', label: 'odisena-ai-gateway-contract', kind: 'repo', state: 'active', sub: 'Gateway contract', url: 'https://github.com/iwdansereau-ops/odisena-ai-gateway-contract', detail: 'AI gateway contract repository.' },
-      { id: 'repo-website', label: 'odisena-website', kind: 'repo', state: 'active', sub: 'Main site source', url: 'https://github.com/iwdansereau-ops/odisena-website', detail: 'Source repository for the odisena.com main site.' },
-      { id: 'repo-avpt', label: 'avpt-cicd-dashboard', kind: 'repo', state: 'active', sub: 'AVPT CI/CD dashboard', url: 'https://github.com/iwdansereau-ops/avpt-cicd-dashboard', detail: 'AVPT CI/CD governance dashboard repository, aligned with the OTel benchmark work.' },
-      { id: 'repo-gomem', label: 'gomem-dashboard', kind: 'repo', state: 'active', sub: 'Named in Schedule A', url: 'https://github.com/iwdansereau-ops/gomem-dashboard', detail: 'Founder-controlled repository named in the Schedule A property inventory. (opentelemetry-collector-contrib is an upstream Apache-2.0 fork and is explicitly excluded.)' },
-
-      // Publication & record systems
-      { id: 'pub-notion', label: 'Notion Collective Work Registry', kind: 'publication', state: 'live', sub: 'Created · 5 DBs, 49 records', url: 'https://app.notion.com/p/39cc43ec8bdd8188a8a0c392ccb2ad86', detail: 'Notion Odisena Collective Work Registry — created, with five linked databases and 49 seeded records. Subordinate to Space canon it mirrors.' },
-      { id: 'pub-asana', label: 'Asana Critical Gates', kind: 'publication', state: 'live', sub: 'Created · 12 tasks P0–P3', url: 'https://app.asana.com/1/1216220648575767/project/1216497028016174', detail: 'Asana Odisena Critical Gates project — created, tracking 12 tasks across P0–P3 priority tiers. Existing Helios / HomeKit projects are linked, not duplicated.' },
-      { id: 'pub-neon', label: 'Neon — Odisena Infinity Engine', kind: 'publication', state: 'live', sub: 'Present · structured data', detail: 'Neon project (Odisena Infinity Engine). Should be mapped to the app/repo that owns its schema before any synchronization work.' },
-      { id: 'pub-vb', label: 'Visual Bible Register', kind: 'publication', state: 'advisory', sub: 'Register 40 · mirror 30 (advisory)', detail: 'Advisory-recorded: register revision 1.4 reports 40 assets; the console mirror visualbibleregister.json is reported stale at 30. The two overlapping counts are preserved, NOT reconciled — no autonomous refresh is authorized.' },
-
-      // Execution gates
-      { id: 'gate-vercel', label: 'Recover Vercel authority', kind: 'gate', state: 'blocked', sub: 'P0 · authority', detail: 'Identify the team/account/project holding odisena.world, odisena.com and www.odisena.com. Do not mutate DNS until ownership and provider-prescribed records are visible.' },
-      { id: 'gate-www', label: 'Repair www.odisena.com', kind: 'gate', state: 'blocked', sub: 'P0 · authority', detail: 'Recover the owning Vercel scope, then repair the www binding / TLS.' },
-      { id: 'gate-helios-bind', label: 'Resolve Helios domain binding', kind: 'gate', state: 'blocked', sub: 'P0 · authority', detail: 'Recover the owner-authorized project scope for the Odisena.World / Helios domain.' },
-      { id: 'gate-webxr', label: 'Physical WebXR validation', kind: 'gate', state: 'held', sub: 'P1 · validation', detail: 'Run the physical-headset WebXR gate after authority recovery. Domain cutover should follow, not precede, successful device validation.' },
-      { id: 'gate-d0', label: 'Home-network D0 baseline', kind: 'gate', state: 'notexec', sub: 'P1 · validation', detail: 'Not executed. Resolve the iperf3 server dependency and select fixed media tracks so the D0 baseline can exist.' },
-      { id: 'gate-d6', label: 'Home-network D6 diff', kind: 'gate', state: 'blocked', sub: 'P1 · blocked by D0', detail: 'Benchmark-diff verdict. Blocked by D0 — can only run after the D0 baseline and the defined cutover window.' },
-      { id: 'gate-apex', label: 'Apex production promotion', kind: 'gate', state: 'held', sub: 'P1 · code green, held', detail: 'Apex is code-green but promotion is held. Deploy prerequisites with production disabled, validate preservation evidence, then treat production enablement as a distinct controlled action.' },
-      { id: 'gate-vestibule', label: 'Master vestibule', kind: 'gate', state: 'held', sub: 'Held · Recovery-C', detail: 'Master vestibule held; preserve the Recovery-C hold.' },
-      { id: 'gate-aol', label: 'Art of Living catalog registration', kind: 'gate', state: 'proposed', sub: 'P2 · publication', detail: 'Register The Art of Living v2 as canonical and treat the print PDF as an expression; GATE-3 rights review pending.' },
-      { id: 'gate-gate2', label: 'Founding Loop structural log', kind: 'gate', state: 'proposed', sub: 'P2 · GATE-2', detail: 'Complete the GATE-2 structural log for The Founding Loop; keep speculative chapters and the fictional-composite disclosure visible.' },
-      { id: 'gate-rights', label: 'Counsel rights packet', kind: 'gate', state: 'proposed', sub: 'P2 · GATE-3', detail: 'Counsel-facing rights packet (GATE-3). Multiple rights-review gates remain unresolved and are not decided by this console.' },
-      { id: 'gate-invent', label: 'Invention disclosure packet', kind: 'gate', state: 'proposed', sub: 'P3 · evidence', detail: 'Convert the invention registry into dated disclosures with inventors, first-use evidence and legal-review status.' },
-      { id: 'gate-contrib', label: 'Contributor audit', kind: 'gate', state: 'proposed', sub: 'P3 · evidence', detail: 'Contributor / authorship audit across works and repositories.' },
-      { id: 'gate-claims', label: 'Technical-claim validation', kind: 'gate', state: 'proposed', sub: 'P3 · evidence', detail: 'Tie hardware, security, healthcare, defense, financial-data and latency claims to implemented evidence and counsel-approved language.' },
+      // Repositories (public source of this console)
+      { id: 'repo-console', label: 'odisena-console', kind: 'repo', state: 'active', sub: 'This console', url: 'https://github.com/iwdansereau-ops/odisena-console', detail: 'Public source repository for this console.' },
     ],
     links: [
       ['eng-otel', 'prod-console'], ['eng-rds', 'prod-console'], ['eng-iam', 'prod-console'],
-      ['eng-otel', 'repo-avpt'],
       ['repo-console', 'srf-console'], ['prod-console', 'srf-console'],
-      ['repo-website', 'srf-apex'], ['repo-website', 'srf-www'],
-      ['repo-chronicle', 'srf-chronicle'], ['repo-timeline', 'srf-chronicle'],
-      ['prod-chronicle', 'srf-chronicle'], ['prod-chronicle', 'repo-chronicle'],
-      ['prod-helios', 'srf-world'],
-      ['srf-apex', 'srf-www'],
-      ['srf-wc-pplx', 'srf-wc-com'], ['srf-wc-vercel', 'srf-wc-com'],
-      ['pub-notion', 'prod-chronicle'], ['pub-notion', 'pub-vb'], ['pub-neon', 'pub-notion'],
-      ['pub-vb', 'srf-apex'],
-      ['pub-asana', 'gate-vercel'], ['pub-asana', 'gate-apex'], ['pub-asana', 'gate-gate2'], ['pub-asana', 'gate-invent'],
-      ['gate-vercel', 'srf-world'], ['gate-vercel', 'srf-www'],
-      ['gate-www', 'srf-www'], ['gate-helios-bind', 'srf-world'],
-      ['gate-webxr', 'prod-helios'], ['gate-d0', 'gate-d6'], ['gate-apex', 'srf-apex'],
-      ['gate-vestibule', 'srf-apex'],
-      ['gate-aol', 'pub-notion'], ['gate-gate2', 'prod-chronicle'], ['gate-rights', 'prod-chronicle'],
-      ['gate-invent', 'pub-notion'], ['gate-contrib', 'pub-notion'], ['gate-claims', 'pub-notion'],
     ],
   };
   const SYSTEM_BY_ID = Object.fromEntries(SYSTEM.nodes.map(n => [n.id, n]));
@@ -138,7 +87,7 @@
   })();
 
   // Home status summary + Ops rows draw from these curated id sets.
-  const HOME_STATUS_IDS = ['srf-apex', 'srf-www', 'srf-console', 'srf-chronicle', 'srf-world', 'prod-helios', 'gate-apex'];
+  const HOME_STATUS_IDS = ['srf-apex', 'srf-console', 'srf-chronicle'];
 
   // ===== Synthetic / sensitive classification =====
   function isSynthetic(item) {
@@ -747,7 +696,7 @@
   }
 
   function renderOpsStatus() {
-    const map = { 'ops-surfaces': 'surface', 'ops-gates': 'gate', 'ops-publication': 'publication' };
+    const map = { 'ops-surfaces': 'surface' };
     Object.entries(map).forEach(([elId, kind]) => {
       const el = document.getElementById(elId);
       if (!el) return;

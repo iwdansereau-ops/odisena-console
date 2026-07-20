@@ -55,7 +55,7 @@ Settings → Secrets and variables → Actions → New repository secret. Only `
 
 **Required for weekly digest email:**
 
-- `DIGEST_TO` — your email (`i.w.dansereau@gmail.com`)
+- `DIGEST_TO` — the recipient inbox for the digest (e.g. a team/role alias like `alerts@example.com`)
 - `DIGEST_FROM` — sender identity (defaults to `DIGEST_TO` if unset)
 
 **Choose one email transport:**
