@@ -43,6 +43,17 @@ jobs:
       - name: Verify local references resolve
         run: python3 .github/scripts/check_links.py
 
+  exposure-scan:
+    name: exposure-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Self-test exposure-scan logic
+        run: python3 test_check_exposure.py
+        working-directory: .github/scripts
+      - name: Scan public surface for PII / private links / internal detail
+        run: python3 .github/scripts/check_exposure.py
+
   sw-cache-bump:
     name: sw-cache-bump
     runs-on: ubuntu-latest
