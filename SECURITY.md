@@ -29,9 +29,17 @@ content-injection through `catalog.json`/runbooks, or the service worker.
   and never proxies cross-origin requests.
 - **No third-party runtime code.** `marked.min.js` is vendored; there is no
   CDN, analytics, or telemetry.
-- **Security headers** are set by the host configs (`_headers`, `netlify.toml`,
-  `vercel.json`) for hosts that honour them. GitHub Pages does not apply custom
-  headers, so the site is written to be safe without them.
+- **Security headers on GitHub Pages.** Pages cannot set custom HTTP response
+  headers, so the previous per-host config files (`_headers`, `netlify.toml`,
+  `vercel.json`) were removed — they described protections that never applied in
+  production. Protections are instead delivered the way Pages supports them:
+  HTTPS + HSTS and `X-Content-Type-Options: nosniff` are sent automatically by
+  Pages, and Content-Security-Policy (`script-src 'self'`, no inline script) and
+  Referrer-Policy are set via `<meta>` tags in `index.html` / `404.html`.
+  Clickjacking protection (`X-Frame-Options` / CSP `frame-ancestors`) requires a
+  response header and is an **accepted gap on Pages**; front Pages with a
+  header-capable CDN if that ever becomes a hard requirement. See
+  [DEPLOYMENT.md](./DEPLOYMENT.md) for the full posture.
 
 ## Custom-domain & DNS hardening
 

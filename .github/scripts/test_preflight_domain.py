@@ -7,9 +7,12 @@ the first assertion failure, matching the other self-tests in this directory.
 import sys
 
 from preflight_domain import (
+    FAIL,
     GH_PAGES_A,
     GH_PAGES_AAAA,
+    SKIP,
     apex_of,
+    classify_probe_error,
     classify_records,
     evaluate_apex_isolation,
     evaluate_cname_target,
@@ -84,25 +87,51 @@ def run() -> int:
         ok, detail = evaluate_apex_isolation(a, aaaa)
         check(f"apex-isolation: {name}", ok, expect, detail)
 
-    # evaluate_tls
-    for name, san, err, expect in [
-        ("exact SAN", ["console.odisena.com"], None, True),
-        ("wildcard parent", ["*.odisena.com"], None, True),
-        ("unrelated SAN", ["example.com"], None, False),
-        ("handshake error", [], "reset by peer", False),
+    # evaluate_tls (SAN-coverage decision only; probe errors are classified
+    # separately by classify_probe_error)
+    for name, san, expect in [
+        ("exact SAN", ["console.odisena.com"], True),
+        ("wildcard parent", ["*.odisena.com"], True),
+        ("unrelated SAN", ["example.com"], False),
+        ("empty SAN", [], False),
     ]:
-        ok, detail = evaluate_tls(HOST, san, err)
+        ok, detail = evaluate_tls(HOST, san)
         check(f"tls: {name}", ok, expect, detail)
 
-    # evaluate_http
-    for name, status, err, expect in [
-        ("200", 200, None, True),
-        ("301 redirect", 301, None, True),
-        ("404", 404, None, False),
-        ("probe error", None, "timed out", False),
+    # evaluate_http (status-code decision only)
+    for name, status, expect in [
+        ("200", 200, True),
+        ("301 redirect", 301, True),
+        ("404", 404, False),
+        ("no status", None, False),
     ]:
-        ok, detail = evaluate_http(status, err)
+        ok, detail = evaluate_http(status)
         check(f"http: {name}", ok, expect, detail)
+
+    # classify_probe_error — connection-level egress failures SKIP; genuine
+    # certificate/protocol failures FAIL.
+    def check_cls(name: str, got: str, expect: str) -> None:
+        nonlocal failures
+        status = "PASS" if got == expect else "FAIL"
+        if got != expect:
+            failures += 1
+        print(f"  [{status}] classify: {name}: got {got} (want {expect})")
+
+    for name, exc_name, expect in [
+        # egress / environment limits -> SKIP (preserves sandbox behavior)
+        ("connection reset (sandbox egress)", "ConnectionResetError", SKIP),
+        ("connection refused", "ConnectionRefusedError", SKIP),
+        ("timeout", "TimeoutError", SKIP),
+        ("socket.timeout alias", "timeout", SKIP),
+        ("dns lookup failure", "gaierror", SKIP),
+        ("network unreachable (OSError)", "OSError", SKIP),
+        # genuine certificate / protocol defects -> FAIL
+        ("cert verification failure", "SSLCertVerificationError", FAIL),
+        ("tls protocol error", "SSLError", FAIL),
+        ("hostname mismatch", "CertificateError", FAIL),
+        ("unknown error", "ValueError", FAIL),
+    ]:
+        check_cls(name, classify_probe_error(exc_name), expect)
 
     if failures:
         print(f"test_preflight_domain: {failures} FAILURE(S)")

@@ -22,11 +22,19 @@ Two modes:
         - Founder vanity aliases (optional): reported as present/absent.
           Absent aliases are informational and never fail the preflight.
 
+Result classification is deliberate. A genuine certificate/protocol defect
+(bad SAN, verification failure, TLS/HTTP protocol error) is a FAIL. A pure
+connection-level failure — the host running the preflight simply cannot reach
+the target (connection reset/refused, timeout, network unreachable, DNS
+lookup failure) — is a SKIP: an environment/egress limit, not a site defect,
+so it never gates. Missing the `dig` binary is handled the same way (SKIP,
+not a crash).
+
 The decision helpers (validate_*, classify_*, evaluate_*) are pure functions
 with no I/O so they can be unit-tested without a network; see
-test_preflight_domain.py. Network probing is confined to the `probe_*`
-helpers and is strictly read-only (DNS queries, a TLS handshake, and HEAD/GET
-requests). Nothing here changes DNS, Pages settings, or repository state.
+test_preflight_domain.py. Network probing is confined to the `probe_*`/
+`resolve_*` helpers and is strictly read-only (DNS queries, a TLS handshake,
+and HEAD requests). Nothing here changes DNS, Pages settings, or repo state.
 """
 import argparse
 import re
@@ -69,6 +77,26 @@ IPV6_RE = re.compile(r"^[0-9a-fA-F:]+:[0-9a-fA-F:]+$")
 
 # Status vocabulary. OK/FAIL are gating; SKIP/INFO never affect the exit code.
 OK, FAIL, SKIP, INFO = "OK", "FAIL", "SKIP", "INFO"
+
+# Concrete exception class names that mean "this host cannot reach the target"
+# — an egress/environment limit, not a defect in the site. These map to SKIP.
+# Everything else (notably TLS certificate/protocol errors such as
+# SSLCertVerificationError / SSLError) is a genuine failure and maps to FAIL.
+EGRESS_ERROR_NAMES = frozenset({
+    "ConnectionResetError",
+    "ConnectionRefusedError",
+    "ConnectionAbortedError",
+    "TimeoutError",
+    "timeout",          # socket.timeout (alias of TimeoutError on 3.10+)
+    "gaierror",         # socket.gaierror — DNS lookup failed
+    "herror",           # socket.herror
+    "OSError",          # e.g. [Errno 101] Network unreachable / EHOSTUNREACH
+})
+
+
+class DigUnavailable(Exception):
+    """Raised when the `dig` resolver cannot be run at all (binary missing or
+    the query timed out). Callers treat DNS checks as SKIP, never a crash."""
 
 
 # --- Pure decision helpers (no I/O; unit-tested) ----------------------------
@@ -136,11 +164,19 @@ def evaluate_apex_isolation(apex_a: list[str], apex_aaaa: list[str]
     return True, f"apex isolated (points elsewhere: {shown})"
 
 
-def evaluate_tls(host: str, san: list[str], error: str | None
-                 ) -> tuple[bool, str]:
+def classify_probe_error(exc_name: str) -> str:
+    """Map a probe exception's concrete class name to a preflight status.
+
+    Connection-level failures (reset/refused/timeout/unreachable/DNS) mean the
+    preflight host has no egress to the target -> SKIP (non-gating). Anything
+    else — in practice TLS certificate/protocol errors like
+    SSLCertVerificationError or SSLError — is a genuine defect -> FAIL.
+    """
+    return SKIP if exc_name in EGRESS_ERROR_NAMES else FAIL
+
+
+def evaluate_tls(host: str, san: list[str]) -> tuple[bool, str]:
     """Certificate SAN must cover the host (exact or wildcard parent)."""
-    if error:
-        return False, f"TLS handshake failed: {error}"
     host = host.lower()
     parent = "." + host.split(".", 1)[1] if "." in host else host
     for name in san:
@@ -150,9 +186,7 @@ def evaluate_tls(host: str, san: list[str], error: str | None
     return False, f"certificate SAN {san} does not cover {host}"
 
 
-def evaluate_http(status: int | None, error: str | None) -> tuple[bool, str]:
-    if error:
-        return False, f"HTTP probe failed: {error}"
+def evaluate_http(status: int | None) -> tuple[bool, str]:
     if status is None:
         return False, "no HTTP status"
     if 200 <= status < 400:
@@ -162,10 +196,15 @@ def evaluate_http(status: int | None, error: str | None) -> tuple[bool, str]:
 
 # --- Live probes (read-only network I/O) ------------------------------------
 def _dig(host: str, rtype: str) -> list[str]:
-    out = subprocess.run(
-        ["dig", "+short", host, rtype],
-        capture_output=True, text=True, timeout=20,
-    ).stdout
+    try:
+        out = subprocess.run(
+            ["dig", "+short", host, rtype],
+            capture_output=True, text=True, timeout=20,
+        ).stdout
+    except FileNotFoundError as exc:
+        raise DigUnavailable("dig binary not found on PATH") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise DigUnavailable(f"dig timed out after {exc.timeout}s") from exc
     return [ln.strip() for ln in out.splitlines() if ln.strip()]
 
 
@@ -182,8 +221,9 @@ def resolve_cname(host: str) -> list[str]:
 
 
 def probe_tls(host: str, timeout: float = 10.0
-              ) -> tuple[list[str], str | None]:
-    """Return (SAN list, error). Read-only TLS handshake."""
+              ) -> tuple[list[str], BaseException | None]:
+    """Return (SAN list, exception). Read-only TLS handshake. The caller
+    classifies the exception (see classify_probe_error)."""
     ctx = ssl.create_default_context()
     try:
         with socket.create_connection((host, 443), timeout=timeout) as sock:
@@ -191,13 +231,14 @@ def probe_tls(host: str, timeout: float = 10.0
                 cert = ssock.getpeercert()
         san = [v for typ, v in cert.get("subjectAltName", []) if typ == "DNS"]
         return san, None
-    except Exception as exc:  # noqa: BLE001 - report any probe failure verbatim
-        return [], f"{type(exc).__name__}: {exc}"
+    except Exception as exc:  # noqa: BLE001 - classified by the caller
+        return [], exc
 
 
 def probe_http(host: str, scheme: str = "https", timeout: float = 10.0
-               ) -> tuple[int | None, str | None]:
-    """HEAD request; return (status, error). Read-only."""
+               ) -> tuple[int | None, BaseException | None]:
+    """HEAD request; return (status, exception). Read-only. The caller
+    classifies the exception (see classify_probe_error)."""
     import http.client
 
     conn_cls = (http.client.HTTPSConnection if scheme == "https"
@@ -206,8 +247,8 @@ def probe_http(host: str, scheme: str = "https", timeout: float = 10.0
     try:
         conn.request("HEAD", "/")
         return conn.getresponse().status, None
-    except Exception as exc:  # noqa: BLE001
-        return None, f"{type(exc).__name__}: {exc}"
+    except Exception as exc:  # noqa: BLE001 - classified by the caller
+        return None, exc
     finally:
         conn.close()
 
@@ -246,47 +287,69 @@ def run_offline(report: Report, host: str) -> None:
                else ".nojekyll missing (Pages would run Jekyll)")
 
 
+def _add_probe_row(report: Report, name: str, exc: BaseException | None,
+                   ok: bool, detail: str) -> None:
+    """Record a network-probe row. An exception is classified into SKIP
+    (egress/environment limit) or FAIL (genuine cert/protocol defect);
+    otherwise the pure (ok, detail) decision is used."""
+    if exc is not None:
+        status = classify_probe_error(type(exc).__name__)
+        label = ("unverifiable from this host" if status == SKIP
+                 else "check failed")
+        report.add(name, status, f"{label} ({type(exc).__name__}: {exc})")
+    else:
+        report.add(name, OK if ok else FAIL, detail)
+
+
 def run_live(report: Report, host: str, aliases: list[str]) -> None:
     apex = apex_of(host)
+    dns_names = ("dns-cname", "dns-a", "dns-aaaa", "apex-isolation")
 
-    chain = resolve_cname(host)
-    ok, detail = evaluate_cname_target(chain, EXPECTED_PAGES_TARGET)
-    report.add("dns-cname", OK if ok else FAIL, detail)
+    try:
+        ok, detail = evaluate_cname_target(resolve_cname(host),
+                                           EXPECTED_PAGES_TARGET)
+        report.add("dns-cname", OK if ok else FAIL, detail)
 
-    ok, detail = classify_records(resolve_a(host), GH_PAGES_A, "A")
-    report.add("dns-a", OK if ok else FAIL, detail)
+        ok, detail = classify_records(resolve_a(host), GH_PAGES_A, "A")
+        report.add("dns-a", OK if ok else FAIL, detail)
 
-    ok, detail = classify_records(resolve_aaaa(host), GH_PAGES_AAAA, "AAAA")
-    report.add("dns-aaaa", OK if ok else FAIL, detail)
+        ok, detail = classify_records(resolve_aaaa(host), GH_PAGES_AAAA, "AAAA")
+        report.add("dns-aaaa", OK if ok else FAIL, detail)
 
-    ok, detail = evaluate_apex_isolation(resolve_a(apex), resolve_aaaa(apex))
-    report.add("apex-isolation", OK if ok else FAIL, detail)
+        ok, detail = evaluate_apex_isolation(resolve_a(apex),
+                                             resolve_aaaa(apex))
+        report.add("apex-isolation", OK if ok else FAIL, detail)
 
-    san, err = probe_tls(host)
-    if err:
-        # A blocked handshake from this host is an environment limit, not a
-        # site defect; surface it as SKIP so it does not gate the preflight.
-        report.add("tls", SKIP, f"unverifiable from this host ({err})")
+        alias_states = []
+        for alias in aliases:
+            a, aaaa, cname = (resolve_a(alias), resolve_aaaa(alias),
+                              resolve_cname(alias))
+            if not (a or aaaa or cname):
+                alias_states.append((alias, "absent (optional; not created)"))
+            else:
+                pts = cname or (a + aaaa)
+                alias_states.append((alias, f"present -> {', '.join(pts)}"))
+    except DigUnavailable as exc:
+        # No resolver available (missing binary or timeout): DNS checks cannot
+        # run from this host. SKIP them (environment limit) rather than crash.
+        added = {n for n, _, _ in report.rows}
+        for n in dns_names:
+            if n not in added:
+                report.add(n, SKIP, f"DNS unverifiable from this host ({exc})")
+        for alias in aliases:
+            report.add(f"alias:{alias}", SKIP,
+                       f"DNS unverifiable from this host ({exc})")
     else:
-        ok, detail = evaluate_tls(host, san, None)
-        report.add("tls", OK if ok else FAIL, detail)
+        for alias, detail in alias_states:
+            report.add(f"alias:{alias}", INFO, detail)
 
-    status, err = probe_http(host)
-    if err:
-        report.add("http", SKIP, f"unverifiable from this host ({err})")
-    else:
-        ok, detail = evaluate_http(status, None)
-        report.add("http", OK if ok else FAIL, detail)
+    san, exc = probe_tls(host)
+    ok, detail = evaluate_tls(host, san) if exc is None else (False, "")
+    _add_probe_row(report, "tls", exc, ok, detail)
 
-    for alias in aliases:
-        a = resolve_a(alias)
-        aaaa = resolve_aaaa(alias)
-        cname = resolve_cname(alias)
-        if not (a or aaaa or cname):
-            report.add(f"alias:{alias}", INFO, "absent (optional; not created)")
-        else:
-            pts = cname or (a + aaaa)
-            report.add(f"alias:{alias}", INFO, f"present -> {', '.join(pts)}")
+    status, exc = probe_http(host)
+    ok, detail = evaluate_http(status) if exc is None else (False, "")
+    _add_probe_row(report, "http", exc, ok, detail)
 
 
 def main(argv: list[str] | None = None) -> int:

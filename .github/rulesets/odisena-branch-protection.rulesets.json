@@ -46,18 +46,19 @@
       "avpt_log_location_proposed": "docs/releases/AVPT-<cycle>-<yyyymmdd>.md (proposed; not yet present in repo)"
     },
     "status_checks_reality": {
-      "finding": "CI is now implemented in .github/workflows/ci.yml. It emits five deterministic, secret-free, network-free status-check contexts whose names equal the job names: `html-validate`, `catalog-schema`, `link-check`, `exposure-scan`, `sw-cache-bump`. The *.yml/*.yaml files under artifacts/ remain downloadable console CONTENT and are NOT workflows that run on this repo.",
+      "finding": "CI is now implemented in .github/workflows/ci.yml. It emits six deterministic, secret-free status-check contexts whose names equal the job names: `html-validate`, `catalog-schema`, `link-check`, `domain-preflight`, `exposure-scan`, `sw-cache-bump`. `domain-preflight` runs OFFLINE in CI (committed CNAME + .nojekyll validation + its self-test) — no network egress is assumed; live DNS/TLS/HTTP probing is run out-of-band via `preflight_domain.py --live`. The *.yml/*.yaml files under artifacts/ remain downloadable console CONTENT and are NOT workflows that run on this repo.",
       "enforced_matrix": {
         "develop": ["html-validate", "catalog-schema", "exposure-scan"],
-        "preview": ["html-validate", "catalog-schema", "link-check", "exposure-scan", "sw-cache-bump"],
-        "main": ["html-validate", "catalog-schema", "link-check", "exposure-scan", "sw-cache-bump"]
+        "preview": ["html-validate", "catalog-schema", "link-check", "domain-preflight", "exposure-scan", "sw-cache-bump"],
+        "main": ["html-validate", "catalog-schema", "link-check", "domain-preflight", "exposure-scan", "sw-cache-bump"]
       },
-      "note": "Contexts are matched by name without integration_id, so any app reporting the context satisfies it; the CI workflow is the only producer today. develop uses a non-strict policy (rapid feedback, no forced up-to-date); preview and main are strict (branch must be up to date before merge)."
+      "note": "Contexts are matched by name without integration_id, so any app reporting the context satisfies it; the CI workflow is the only producer today. develop uses a non-strict policy (rapid feedback, no forced up-to-date) and omits the promotion-gate checks (link-check, domain-preflight, sw-cache-bump); preview and main are strict (branch must be up to date before merge) and require all six. `domain-preflight` guards the production custom-domain binding, so it gates promotion (preview/main) alongside link-check and sw-cache-bump."
     },
     "_implemented_status_checks": [
       { "context": "html-validate", "job": "html-validate", "script": ".github/scripts/validate_html.py", "purpose": "App-shell HTML markup integrity (index.html, 404.html, v7.html)." },
       { "context": "catalog-schema", "job": "catalog-schema", "script": ".github/scripts/validate_catalog.py", "purpose": "catalog.json shape + cross-refs + stats consistency." },
       { "context": "link-check", "job": "link-check", "script": ".github/scripts/check_links.py", "purpose": "catalog/sw.js/manifest local references resolve (offline)." },
+      { "context": "domain-preflight", "job": "domain-preflight", "script": ".github/scripts/preflight_domain.py", "purpose": "Custom-domain binding integrity (offline in CI): CNAME is exactly console.odisena.com + .nojekyll present, plus the preflight self-test. Live DNS/TLS/HTTP is out-of-band (--live)." },
       { "context": "exposure-scan", "job": "exposure-scan", "script": ".github/scripts/check_exposure.py", "purpose": "Public surface (incl. archive members) is free of personal PII, private workspace deep-links, and internal ops/legal detail." },
       { "context": "sw-cache-bump", "job": "sw-cache-bump", "script": ".github/scripts/check_sw_cache_bump.py", "purpose": "CACHE key must change when a precached asset changes." }
     ],
@@ -79,7 +80,7 @@
       ]
     },
     "_proposed_required_deployments": {
-      "note": "NOT ENFORCED. Deploys currently target Vercel/Netlify/Cloudflare environments that are NOT registered as GitHub deployment environments. Once GitHub Environments named `preview` and `production` exist, a `required_deployments` rule can gate main on a successful `production` (or `preview`) deployment.",
+      "note": "NOT ENFORCED. Production is GitHub Pages (published from main; no external deploy platform and no committed host-config files — the prior vercel.json/netlify.toml/_headers were removed). There are no GitHub deployment Environments today. Once Environments named `preview` and `production` exist, a `required_deployments` rule can gate main on a successful `production` (or `preview`) deployment.",
       "proposed": {
         "preview": ["preview"],
         "main": ["production"]
@@ -131,6 +132,7 @@
               { "context": "html-validate" },
               { "context": "catalog-schema" },
               { "context": "link-check" },
+              { "context": "domain-preflight" },
               { "context": "exposure-scan" },
               { "context": "sw-cache-bump" }
             ]
@@ -182,6 +184,7 @@
               { "context": "html-validate" },
               { "context": "catalog-schema" },
               { "context": "link-check" },
+              { "context": "domain-preflight" },
               { "context": "exposure-scan" },
               { "context": "sw-cache-bump" }
             ]

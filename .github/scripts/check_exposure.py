@@ -26,6 +26,7 @@ SCAN_DIRS = ["runbooks", "artifacts"]
 SCAN_ROOT_FILES = [
     "index.html", "app.js", "catalog.json", "sw.js", "404.html",
     "manifest.webmanifest", "robots.txt", "README.md", "DEPLOYMENT.md",
+    "SECURITY.md",
 ]
 
 TEXT_SUFFIXES = {

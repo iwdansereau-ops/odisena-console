@@ -34,7 +34,7 @@ via the GitHub REST API.
 | Restrict deletion                | yes               | yes               | yes               |
 | Allowed merge methods            | squash            | squash, merge     | squash, merge, rebase |
 | Admin bypass                     | PR-merge only     | PR-merge only     | always            |
-| Required status checks           | 4 (strict)²       | 4 (strict)²       | 2 (non-strict)²   |
+| Required status checks           | 6 (strict)²       | 6 (strict)²       | 3 (non-strict)²   |
 
 ¹ Enabled via `.github/CODEOWNERS` (`* @iwdansereau-ops`). The owner cannot
 approve their own PR, so merges use the documented solo-admin `pull_request`
@@ -46,27 +46,37 @@ CI is implemented in [`.github/workflows/ci.yml`](../workflows/ci.yml). Each
 job's `name:` is the exact required-check context. Contexts are matched by name
 (no `integration_id`), and the CI workflow is the only producer today.
 
-| Context          | develop | preview | main | Script |
-| ---------------- | :-----: | :-----: | :--: | ------ |
-| `html-validate`  | ✅ | ✅ | ✅ | `.github/scripts/validate_html.py` |
-| `catalog-schema` | ✅ | ✅ | ✅ | `.github/scripts/validate_catalog.py` |
-| `link-check`     | –  | ✅ | ✅ | `.github/scripts/check_links.py` |
-| `sw-cache-bump`  | –  | ✅ | ✅ | `.github/scripts/check_sw_cache_bump.py` |
+| Context           | develop | preview | main | Script |
+| ----------------- | :-----: | :-----: | :--: | ------ |
+| `html-validate`   | ✅ | ✅ | ✅ | `.github/scripts/validate_html.py` |
+| `catalog-schema`  | ✅ | ✅ | ✅ | `.github/scripts/validate_catalog.py` |
+| `exposure-scan`   | ✅ | ✅ | ✅ | `.github/scripts/check_exposure.py` |
+| `link-check`      | –  | ✅ | ✅ | `.github/scripts/check_links.py` |
+| `domain-preflight`| –  | ✅ | ✅ | `.github/scripts/preflight_domain.py` (offline in CI) |
+| `sw-cache-bump`   | –  | ✅ | ✅ | `.github/scripts/check_sw_cache_bump.py` |
 | strict (up-to-date before merge) | no | **yes** | **yes** | — |
 
 ² `develop` deliberately uses a **non-strict** policy (rapid feedback: no forced
-"branch up to date" requirement) and only the two fast structural checks.
-`preview` and `main` are **strict** and require all four.
+"branch up to date" requirement) and only the three fast content checks
+(`html-validate`, `catalog-schema`, `exposure-scan`). `preview` and `main` are
+**strict** and require all six — the develop three plus the promotion gates
+`link-check`, `domain-preflight`, and `sw-cache-bump`. `domain-preflight` runs
+**offline** in CI (committed `CNAME` + `.nojekyll` validation and its self-test);
+live DNS/TLS/HTTP probing is out-of-band via `preflight_domain.py --live`.
 
 ### Local reproduction
 
 ```bash
 python3 .github/scripts/validate_html.py
 python3 .github/scripts/validate_catalog.py
+python3 .github/scripts/check_exposure.py
 python3 .github/scripts/check_links.py
+python3 .github/scripts/preflight_domain.py                # domain-preflight (offline)
 python3 .github/scripts/check_sw_cache_bump.py --event pull_request \
   --base origin/<base-branch> --head HEAD
-( cd .github/scripts && python3 test_sw_cache_bump.py )   # sw-cache-bump unit tests
+( cd .github/scripts && python3 test_check_exposure.py )     # exposure-scan unit tests
+( cd .github/scripts && python3 test_preflight_domain.py )   # domain-preflight unit tests
+( cd .github/scripts && python3 test_sw_cache_bump.py )      # sw-cache-bump unit tests
 ```
 
 ## Administrative / bypass policy
