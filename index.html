@@ -9,7 +9,7 @@
      DEPLOYMENT.md. All app assets are same-origin, so the policy is self-only. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'none'; upgrade-insecure-requests" />
 <meta name="referrer" content="strict-origin-when-cross-origin" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
 <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -166,7 +166,7 @@
       <h1>Runbooks</h1>
     </header>
     <div class="search">
-      <input type="search" id="runbook-search" placeholder="Search runbooks…" autocomplete="off" />
+      <input type="search" id="runbook-search" placeholder="Search runbooks…" autocomplete="off" aria-label="Search runbooks" />
     </div>
     <div class="chip-row" id="runbook-chips"></div>
     <div class="doc-list" id="runbook-list"></div>
@@ -188,7 +188,7 @@
       <h1>Artifacts</h1>
     </header>
     <div class="search">
-      <input type="search" id="artifact-search" placeholder="Search artifacts…" autocomplete="off" />
+      <input type="search" id="artifact-search" placeholder="Search artifacts…" autocomplete="off" aria-label="Search artifacts" />
     </div>
     <div class="chip-row" id="artifact-chips"></div>
     <div class="artifact-list" id="artifact-list"></div>
@@ -210,7 +210,7 @@
       <h1>Sessions</h1>
     </header>
     <div class="search">
-      <input type="search" id="session-search" placeholder="Search sessions…" autocomplete="off" />
+      <input type="search" id="session-search" placeholder="Search sessions…" autocomplete="off" aria-label="Search sessions" />
     </div>
     <div class="session-list" id="session-list"></div>
   </section>

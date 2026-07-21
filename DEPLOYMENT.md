@@ -75,7 +75,7 @@ remain in the markup.
    **not** honor a `no-cache` directive — so freshness cannot rely on cache
    headers. Instead, whenever you change any precached asset (the `ASSETS`
    array in `sw.js`), **bump the `CACHE` constant** at the top of `sw.js`
-   (currently `odisena-v4`). The `activate` handler deletes old caches, and the
+   (currently `odisena-v8`). The `activate` handler deletes old caches, and the
    `sw-cache-bump` CI check fails the PR if a precached asset changes without a
    key bump. Returning clients pick up the new `sw.js` within the Pages CDN TTL.
 4. No cookies, `localStorage`, `sessionStorage`, or `indexedDB` are used — all
@@ -170,7 +170,7 @@ last known-good state is a single revertible ref.
 - Open the site; confirm the home stats (Sessions / Runbooks / Artifacts) load.
 - Open **Runbooks**, click any item — markdown should render.
 - Open **Artifacts**, open one and use its explicit download action.
-- DevTools → Application → Service Workers: `odisena-v4` should be active.
+- DevTools → Application → Service Workers: `odisena-v8` should be active.
 - DevTools → Application → Manifest: no errors, icons resolve.
 - DevTools → Console: no Content-Security-Policy violations.
 - Toggle airplane mode / offline and reload — the shell should still open.
