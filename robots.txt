@@ -1,7 +1,9 @@
 User-agent: *
 Allow: /
 
-# Odisena Console is an internal engineering command center.
-# It contains no crawlable public content of value; indexing is neither
-# required nor blocked. Adjust the line below to `Disallow: /` if you
-# deploy behind a public URL and prefer to keep it out of search engines.
+# Odisena Console is a public, read-only engineering portfolio and
+# system-navigation surface served at https://console.odisena.com/. It is
+# safe to index; there is no private or authenticated content. To keep it out
+# of search engines, change the line above to `Disallow: /`.
+
+Sitemap: https://console.odisena.com/sitemap.xml

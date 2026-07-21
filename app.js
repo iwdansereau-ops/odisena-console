@@ -52,9 +52,10 @@
   const SYSTEM_KIND_ORDER = ['engineering', 'repo', 'product', 'surface'];
 
   // Public system map. Scoped to the public engineering portfolio only.
-  // Internal product roadmap, private registries/links, DNS/authority-recovery
-  // detail, unregistered-domain plans and legal/IP governance are intentionally
-  // NOT modeled here — they are not appropriate for a public surface.
+  // Only already-public products/surfaces are modeled. Internal product
+  // roadmap, private registries/links, DNS/authority-recovery detail,
+  // unregistered-domain plans and legal/IP governance are intentionally NOT
+  // modeled here — they are not appropriate for a public surface.
   const SYSTEM = {
     nodes: [
       // Engineering domains
@@ -64,6 +65,7 @@
 
       // Products
       { id: 'prod-console', label: 'Odisena Console', kind: 'product', state: 'live', sub: 'This app', url: 'https://console.odisena.com', detail: 'Read-only engineering command center and system-navigation surface (this PWA). Published on GitHub Pages at console.odisena.com.' },
+      { id: 'prod-helios', label: 'Odisena.World / Helios', kind: 'product', state: 'preview', sub: 'WebXR MVP · preview-deployed', detail: 'WebXR MVP for Odisena.World (Helios). Built and preview-deployed; its production domain and physical-device validation gates are still pending, so it is intentionally not linked as a live surface. Recorded here as a preview state only.' },
 
       // Deployment surfaces (public, live domains only)
       { id: 'srf-apex', label: 'odisena.com', kind: 'surface', state: 'live', sub: 'Apex · live', url: 'https://odisena.com', detail: 'Apex production domain. Live and publicly served. DNS is managed outside this repository.' },
