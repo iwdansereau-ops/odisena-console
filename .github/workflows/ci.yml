@@ -43,6 +43,19 @@ jobs:
       - name: Verify local references resolve
         run: python3 .github/scripts/check_links.py
 
+  domain-preflight:
+    name: domain-preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Self-test domain-preflight logic
+        run: python3 test_preflight_domain.py
+        working-directory: .github/scripts
+      - name: Validate custom-domain binding (offline)
+        # Offline-only in CI: no network egress is assumed. Live DNS/TLS/HTTP
+        # checks are run out-of-band via `preflight_domain.py --live`.
+        run: python3 .github/scripts/preflight_domain.py
+
   exposure-scan:
     name: exposure-scan
     runs-on: ubuntu-latest

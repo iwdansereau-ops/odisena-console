@@ -68,6 +68,21 @@ See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for the full posture, the rollback
 procedure (`git revert` + merge), service-worker cache-key rules, and notes on
 portability to other static hosts.
 
+### Custom-domain preflight
+
+Before/after any change to `CNAME`, `.nojekyll`, or DNS, run the read-only
+preflight to validate the `console.odisena.com` binding (CNAME integrity, DNS
+A/AAAA against GitHub Pages' address set, apex isolation, TLS, and HTTP):
+
+```bash
+python3 .github/scripts/preflight_domain.py         # offline (CI-safe)
+python3 .github/scripts/preflight_domain.py --live  # + network checks
+```
+
+Optional founder vanity aliases are **reported, never created**. See
+**[SECURITY.md](./SECURITY.md)** for the full domain-hardening and
+vulnerability-reporting policy.
+
 ## Updating content
 
 Add/replace files under `runbooks/` or `artifacts/`, update the matching entry
