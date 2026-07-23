@@ -29,7 +29,7 @@
   }
 
   // ===== System model (static navigation surface) =====
-  // Hand-authored from the Odisena master registry (2026-07-13 cutoff). This is
+  // Hand-authored from the Odisena master registry (2026-07-23 cutoff). This is
   // a recorded navigation model, NOT a live health/telemetry feed. States are
   // deliberately precise and are never reconciled automatically.
   const SYSTEM_STATES = {
@@ -65,12 +65,15 @@
 
       // Products
       { id: 'prod-console', label: 'Odisena Console', kind: 'product', state: 'live', sub: 'This app', url: 'https://console.odisena.com', detail: 'Read-only engineering command center and system-navigation surface (this PWA). Published on GitHub Pages at console.odisena.com.' },
-      { id: 'prod-helios', label: 'Odisena.World / Helios', kind: 'product', state: 'preview', sub: 'WebXR MVP · preview-deployed', detail: 'WebXR MVP for Odisena.World (Helios). Built and preview-deployed; its production domain and physical-device validation gates are still pending, so it is intentionally not linked as a live surface. Recorded here as a preview state only.' },
+      { id: 'prod-helios', label: 'Helios 1 (Cool Wake)', kind: 'product', state: 'live', sub: 'WebXR level · live', url: 'https://helios.odisena.com', detail: 'Cool Wake — the first playable Helios 1 level, in WebXR. Promoted to production and publicly served at helios.odisena.com.' },
 
       // Deployment surfaces (public, live domains only)
       { id: 'srf-apex', label: 'odisena.com', kind: 'surface', state: 'live', sub: 'Apex · live', url: 'https://odisena.com', detail: 'Apex production domain. Live and publicly served. DNS is managed outside this repository.' },
       { id: 'srf-console', label: 'console.odisena.com', kind: 'surface', state: 'live', sub: 'This console · GitHub Pages', url: 'https://console.odisena.com', detail: 'Custom-domain binding for this console, served from GitHub Pages via the committed CNAME. DNS is managed outside this repository.' },
       { id: 'srf-chronicle', label: 'chronicle.odisena.com', kind: 'surface', state: 'live', sub: 'Identity & Chronicle · live', url: 'https://chronicle.odisena.com', detail: 'Identity and Chronicle surface. Publicly served. DNS is managed outside this repository.' },
+      { id: 'srf-helios', label: 'helios.odisena.com', kind: 'surface', state: 'live', sub: 'Helios 1 XR · live', url: 'https://helios.odisena.com', detail: 'Production domain for the Helios 1 WebXR level (Cool Wake). Publicly served via Vercel. DNS is managed outside this repository.' },
+      { id: 'srf-library', label: 'library.odisena.com', kind: 'surface', state: 'live', sub: 'Library of Alexandria · live', url: 'https://library.odisena.com', detail: 'The Library of Alexandria shelf at its odisena.com home. Publicly served via Vercel. DNS is managed outside this repository.' },
+      { id: 'srf-readiness', label: 'readiness.odisena.com', kind: 'surface', state: 'live', sub: 'Readiness scanner · live', url: 'https://readiness.odisena.com', detail: 'Ubuntu 26.04 LTS upgrade readiness scanner. Publicly served via Vercel. DNS is managed outside this repository.' },
 
       // Repositories (public source of this console)
       { id: 'repo-console', label: 'odisena-console', kind: 'repo', state: 'active', sub: 'This console', url: 'https://github.com/iwdansereau-ops/odisena-console', detail: 'Public source repository for this console.' },
@@ -78,6 +81,7 @@
     links: [
       ['eng-otel', 'prod-console'], ['eng-rds', 'prod-console'], ['eng-iam', 'prod-console'],
       ['repo-console', 'srf-console'], ['prod-console', 'srf-console'],
+      ['prod-helios', 'srf-helios'],
     ],
   };
   const SYSTEM_BY_ID = Object.fromEntries(SYSTEM.nodes.map(n => [n.id, n]));
@@ -89,7 +93,7 @@
   })();
 
   // Home status summary + Ops rows draw from these curated id sets.
-  const HOME_STATUS_IDS = ['srf-apex', 'srf-console', 'srf-chronicle'];
+  const HOME_STATUS_IDS = ['srf-apex', 'srf-console', 'srf-chronicle', 'srf-helios', 'srf-library', 'srf-readiness'];
 
   // ===== Synthetic / sensitive classification =====
   function isSynthetic(item) {
